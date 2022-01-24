@@ -2358,8 +2358,8 @@ const char *AP_Mission::Mission_Command::type() const
         return "Go Around";
     case MAV_CMD_NAV_SCRIPT_TIME:
         return "NavScriptTime";
-    // case MAV_CMD_DO_PAUSE_CONTINUE:
-    //     return "PauseContinue";
+    case MAV_CMD_DO_PAUSE_CONTINUE:
+        return "PauseContinue";
 
     default:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
