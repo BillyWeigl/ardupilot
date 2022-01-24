@@ -188,7 +188,7 @@ bool AP_Mission::starts_with_takeoff_cmd()
 /*
     return true if MIS_OPTIONS is set to allow continue of mission
     logic after a land and the next waypoint is a takeoff. If this
-    is false then after a landing is complete the vehicle should 
+    is false then after a landing is complete the vehicle should
     disarm and mission logic should stop
 */
 bool AP_Mission::continue_after_land_check_for_takeoff()
@@ -1174,7 +1174,7 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
     case MAV_CMD_DO_PAUSE_CONTINUE:
         cmd.p1 = packet.param1;
         break;
-        
+
     default:
         // unrecognised command
         return MAV_MISSION_UNSUPPORTED;
@@ -1637,7 +1637,7 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
     case MAV_CMD_DO_PAUSE_CONTINUE:
         packet.param1 = cmd.p1;
         break;
-        
+
     default:
         // unrecognised command
         return false;
@@ -2358,8 +2358,8 @@ const char *AP_Mission::Mission_Command::type() const
         return "Go Around";
     case MAV_CMD_NAV_SCRIPT_TIME:
         return "NavScriptTime";
-    case MAV_CMD_DO_PAUSE_CONTINUE:
-        return "PauseContinue";
+    // case MAV_CMD_DO_PAUSE_CONTINUE:
+    //     return "PauseContinue";
 
     default:
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
