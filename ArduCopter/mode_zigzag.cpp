@@ -30,9 +30,9 @@ const AP_Param::GroupInfo ModeZigZag::var_info[] = {
     // @DisplayName: The delay for zigzag waypoint
     // @Description: Waiting time after reached the destination
     // @Units: s
-    // @Range: 0 127
+    // @Range: 1 127
     // @User: Advanced
-    AP_GROUPINFO("WP_DELAY", 3, ModeZigZag, _wp_delay, 0),
+    AP_GROUPINFO("WP_DELAY", 3, ModeZigZag, _wp_delay, 1),
 
     // @Param: SIDE_DIST
     // @DisplayName: Sideways distance in ZigZag auto
@@ -161,7 +161,7 @@ void ModeZigZag::run()
 void ModeZigZag::save_or_move_to_destination(Destination ab_dest)
 {
     // get current position as an offset from EKF origin
-    const Vector2f curr_pos {inertial_nav.get_position_xy_cm()};
+    const Vector3f curr_pos = inertial_nav.get_position();
 
     // handle state machine changes
     switch (stage) {
@@ -169,12 +169,14 @@ void ModeZigZag::save_or_move_to_destination(Destination ab_dest)
         case STORING_POINTS:
             if (ab_dest == Destination::A) {
                 // store point A
-                dest_A = curr_pos;
+                dest_A.x = curr_pos.x;
+                dest_A.y = curr_pos.y;
                 gcs().send_text(MAV_SEVERITY_INFO, "ZigZag: point A stored");
                 AP::logger().Write_Event(LogEvent::ZIGZAG_STORE_A);
             } else {
                 // store point B
-                dest_B = curr_pos;
+                dest_B.x = curr_pos.x;
+                dest_B.y = curr_pos.y;
                 gcs().send_text(MAV_SEVERITY_INFO, "ZigZag: point B stored");
                 AP::logger().Write_Event(LogEvent::ZIGZAG_STORE_B);
             }
@@ -262,7 +264,7 @@ void ModeZigZag::auto_control()
     float target_yaw_rate = 0;
     if (!copter.failsafe.radio) {
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
     }
 
     // set motors to full range
@@ -303,7 +305,7 @@ void ModeZigZag::manual_control()
         // process pilot's roll and pitch input
         loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
         // get pilot's desired yaw rate
-        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->get_control_in());
 
         // get pilot desired climb rate
         target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
@@ -407,7 +409,7 @@ bool ModeZigZag::reached_destination()
     if (reach_wp_time_ms == 0) {
         reach_wp_time_ms = now;
     }
-    return ((now - reach_wp_time_ms) >= (uint16_t)constrain_int16(_wp_delay, 0, 127) * 1000);
+    return ((now - reach_wp_time_ms) > (uint16_t)constrain_int16(_wp_delay, 1, 127) * 1000);
 }
 
 // calculate next destination according to vector A-B and current position
@@ -427,7 +429,8 @@ bool ModeZigZag::calculate_next_dest(Destination ab_dest, bool use_wpnav_alt, Ve
     }
 
     // get distance from vehicle to start_pos
-    const Vector2f curr_pos2d {inertial_nav.get_position_xy_cm()};
+    const Vector3f curr_pos = inertial_nav.get_position();
+    const Vector2f curr_pos2d = Vector2f(curr_pos.x, curr_pos.y);
     Vector2f veh_to_start_pos = curr_pos2d - start_pos;
 
     // lengthen AB_diff so that it is at least as long as vehicle is from start point
@@ -458,7 +461,7 @@ bool ModeZigZag::calculate_next_dest(Destination ab_dest, bool use_wpnav_alt, Ve
                 next_dest.z = copter.rangefinder_state.alt_cm_filt.get();
             }
         } else {
-            next_dest.z = pos_control->is_active_z() ? pos_control->get_pos_target_z_cm() : inertial_nav.get_position_z_up_cm();
+            next_dest.z = pos_control->is_active_z() ? pos_control->get_pos_target_z_cm() : curr_pos.z;
         }
     }
 
@@ -499,7 +502,8 @@ bool ModeZigZag::calculate_side_dest(Vector3f& next_dest, bool& terrain_alt) con
     float scalar = constrain_float(_side_dist, 0.1f, 100.0f) * 100 / safe_sqrt(AB_side.length_squared());
 
     // get distance from vehicle to start_pos
-    const Vector2f curr_pos2d {inertial_nav.get_position_xy_cm()};
+    const Vector3f curr_pos = inertial_nav.get_position();
+    const Vector2f curr_pos2d = Vector2f(curr_pos.x, curr_pos.y);
     next_dest.x = curr_pos2d.x + (AB_side.x * scalar);
     next_dest.y = curr_pos2d.y + (AB_side.y * scalar);
 
@@ -510,7 +514,7 @@ bool ModeZigZag::calculate_side_dest(Vector3f& next_dest, bool& terrain_alt) con
             next_dest.z = copter.rangefinder_state.alt_cm_filt.get();
         }
     } else {
-        next_dest.z = pos_control->is_active_z() ? pos_control->get_pos_target_z_cm() : inertial_nav.get_position_z_up_cm();
+        next_dest.z = pos_control->is_active_z() ? pos_control->get_pos_target_z_cm() : curr_pos.z;
     }
 
     return true;

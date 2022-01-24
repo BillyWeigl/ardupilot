@@ -16,15 +16,9 @@ protected:
         return MAV_DISTANCE_SENSOR_LASER;
     }
 
-    bool get_signal_quality_pct(uint8_t &quality_pct) const override {
-        quality_pct = no_signal ? 0 : 100;
-        return true;
-    }
-
 private:
     // get a reading
-    bool get_reading(float &reading_m) override;
-    bool is_lost_signal_distance(int16_t distance_cm, int16_t distance_cm_max);
+    bool get_reading(uint16_t &reading_cm) override;
 
     char linebuf[10];           // legacy protocol buffer
     uint8_t linebuf_len;        // legacy protocol buffer length
@@ -40,6 +34,4 @@ private:
     } protocol_state;
     uint8_t legacy_valid_count;
     uint8_t binary_valid_count;
-
-    bool no_signal = false;
 };

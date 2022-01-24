@@ -32,9 +32,7 @@
 #endif
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-#ifndef BOARD_SAFETY_ENABLE_DEFAULT
 # define BOARD_SAFETY_ENABLE_DEFAULT 1
-#endif
 #ifndef BOARD_SER1_RTSCTS_DEFAULT
 # define BOARD_SER1_RTSCTS_DEFAULT 2
 #endif
@@ -45,10 +43,6 @@
 
 #ifndef HAL_IMU_TEMP_DEFAULT
 #define HAL_IMU_TEMP_DEFAULT       -1 // disabled
-#endif
-
-#ifndef HAL_IMU_TEMP_MARGIN_LOW_DEFAULT
-#define HAL_IMU_TEMP_MARGIN_LOW_DEFAULT 0 // disabled
 #endif
 
 #ifndef BOARD_SAFETY_OPTION_DEFAULT
@@ -172,13 +166,13 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
 #endif
 
 #if HAL_HAVE_IMU_HEATER
-    // @Param: HEAT_TARG
-    // @DisplayName: Board heater temperature target
-    // @Description: Board heater target temperature for boards with controllable heating units. DO NOT SET to -1 on the Cube. Set to -1 to disable the heater, please reboot after setting to -1.
+    // @Param: IMU_TARGTEMP
+    // @DisplayName: Target IMU temperature
+    // @Description: This sets the target IMU temperature for boards with controllable IMU heating units. DO NOT SET to -1 on the Cube. Set to -1 to disable the heater, please reboot after setting to -1.
     // @Range: -1 80
     // @Units: degC
     // @User: Advanced
-    AP_GROUPINFO("HEAT_TARG", 8, AP_BoardConfig, heater.imu_target_temperature, HAL_IMU_TEMP_DEFAULT),
+    AP_GROUPINFO("IMU_TARGTEMP", 8, AP_BoardConfig, heater.imu_target_temperature, HAL_IMU_TEMP_DEFAULT),
 #endif
 
 #if AP_FEATURE_BOARD_DETECT
@@ -263,7 +257,7 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
     // @Param: OPTIONS
     // @DisplayName: Board options
     // @Description: Board specific option flags
-    // @Bitmask: 0:Enable hardware watchdog, 1:Disable MAVftp, 2:Enable set of internal parameters, 3:Enable Debug Pins
+    // @Bitmask: 0:Enable hardware watchdog, 1:Disable MAVftp, 2:Enable set of internal parameters
     // @User: Advanced
     AP_GROUPINFO("OPTIONS", 19, AP_BoardConfig, _options, HAL_BRD_OPTIONS_DEFAULT),
 
@@ -276,30 +270,29 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
     AP_GROUPINFO("BOOT_DELAY", 20, AP_BoardConfig, _boot_delay_ms, HAL_DEFAULT_BOOT_DELAY),
 
 #if HAL_HAVE_IMU_HEATER
-    // @Param: HEAT_P
-    // @DisplayName: Board Heater P gain
-    // @Description: Board Heater P gain
+    // @Param: IMUHEAT_P
+    // @DisplayName: IMU Heater P gain
+    // @Description: IMU Heater P gain
     // @Range: 1 500
     // @Increment: 1
     // @User: Advanced
 
-    // @Param: HEAT_I
-    // @DisplayName: Board Heater I gain
-    // @Description: Board Heater integrator gain
+    // @Param: IMUHEAT_I
+    // @DisplayName: IMU Heater I gain
+    // @Description: IMU Heater integrator gain
     // @Range: 0 1
     // @Increment: 0.1
     // @User: Advanced
 
-    // @Param: HEAT_IMAX
-    // @DisplayName: Board Heater IMAX
-    // @Description: Board Heater integrator maximum
+    // @Param: IMUHEAT_IMAX
+    // @DisplayName: IMU Heater IMAX
+    // @Description: IMU Heater integrator maximum
     // @Range: 0 100
     // @Increment: 1
     // @User: Advanced
-    AP_SUBGROUPINFO(heater.pi_controller, "HEAT_",  21, AP_BoardConfig, AC_PI),
+    AP_SUBGROUPINFO(heater.pi_controller, "IMUHEAT_",  21, AP_BoardConfig, AC_PI),
 #endif
 
-#ifdef HAL_PIN_ALT_CONFIG
     // @Param: ALT_CONFIG
     // @DisplayName: Alternative HW config
     // @Description: Select an alternative hardware configuration. A value of zero selects the default configuration for this board. Other values are board specific. Please see the documentation for your board for details on any alternative configuration values that may be available.
@@ -308,18 +301,7 @@ const AP_Param::GroupInfo AP_BoardConfig::var_info[] = {
     // @User: Advanced
     // @RebootRequired: True
     AP_GROUPINFO("ALT_CONFIG", 22, AP_BoardConfig, _alt_config, 0),
-#endif // HAL_PIN_ALT_CONFIG
-
-#if HAL_HAVE_IMU_HEATER
-    // @Param: HEAT_LOWMGN
-    // @DisplayName: Board heater temp lower margin
-    // @Description: Arming check will fail if temp is lower than this margin below BRD_HEAT_TARG. 0 disables the low temperature check
-    // @Range: 0 20
-    // @Units: degC
-    // @User: Advanced
-    AP_GROUPINFO("HEAT_LOWMGN", 23, AP_BoardConfig, heater.imu_arming_temperature_margin_low, HAL_IMU_TEMP_MARGIN_LOW_DEFAULT),
-#endif
-
+    
     AP_GROUPEND
 };
 
@@ -368,7 +350,6 @@ void AP_BoardConfig::set_default_safety_ignore_mask(uint16_t mask)
 void AP_BoardConfig::init_safety()
 {
     board_init_safety();
-    board_init_debug();
 }
 
 /*
@@ -392,20 +373,10 @@ void AP_BoardConfig::throw_error(const char *err_type, const char *fmt, va_list 
             last_print_ms = now;
             char printfmt[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+2];
             hal.util->snprintf(printfmt, sizeof(printfmt), "%s: %s\n", err_type, fmt);
-            {
-                va_list arg_copy;
-                va_copy(arg_copy, arg);
-                vprintf(printfmt, arg_copy);
-                va_end(arg_copy);
-            }
+            vprintf(printfmt, arg);
 #if !APM_BUILD_TYPE(APM_BUILD_UNKNOWN) && !defined(HAL_BUILD_AP_PERIPH)
             hal.util->snprintf(printfmt, sizeof(printfmt), "%s: %s", err_type, fmt);
-            {
-                va_list arg_copy;
-                va_copy(arg_copy, arg);
-                gcs().send_textv(MAV_SEVERITY_CRITICAL, printfmt, arg_copy);
-                va_end(arg_copy);
-            }
+            gcs().send_textv(MAV_SEVERITY_CRITICAL, printfmt, arg);
 #endif
         }
 #if !APM_BUILD_TYPE(APM_BUILD_UNKNOWN) && !defined(HAL_BUILD_AP_PERIPH)
@@ -421,9 +392,7 @@ void AP_BoardConfig::allocation_error(const char *fmt, ...)
 {
     va_list arg_list;
     va_start(arg_list, fmt);
-    char newfmt[64] {};
-    snprintf(newfmt, sizeof(newfmt), "Unable to allocate %s", fmt);
-    throw_error("Allocation Error", newfmt, arg_list);
+    throw_error("Allocation Error", fmt, arg_list);
     va_end(arg_list);
 }
 

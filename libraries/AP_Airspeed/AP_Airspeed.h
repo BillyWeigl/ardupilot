@@ -7,11 +7,6 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_MSP/msp.h>
 
-#ifndef AP_AIRSPEED_ENABLED
-#define AP_AIRSPEED_ENABLED 1
-#endif
-
-
 class AP_Airspeed_Backend;
 
 #ifndef AIRSPEED_MAX_SENSORS
@@ -57,16 +52,13 @@ public:
 
     void init(void);
 
-    // indicate which bit in LOG_BITMASK indicates we should log airspeed readings
-    void set_log_bit(uint32_t log_bit) { _log_bit = log_bit; }
-
 #if AP_AIRSPEED_AUTOCAL_ENABLE
     // inflight ratio calibration
     void set_calibration_enabled(bool enable) {calibration_enabled = enable;}
 #endif //AP_AIRSPEED_AUTOCAL_ENABLE
 
     // read the analog source and update airspeed
-    void update(void);
+    void update(bool log);
 
     // calibrate the airspeed. This must be called on startup if the
     // altitude/climb_rate/acceleration interfaces are ever used
@@ -258,8 +250,6 @@ private:
     // current primary sensor
     uint8_t primary;
     uint8_t num_sensors;
-
-    uint32_t _log_bit = -1;     // stores which bit in LOG_BITMASK is used to indicate we should log airspeed readings
 
     void read(uint8_t i);
     // return the differential pressure in Pascal for the last airspeed reading for the requested instance

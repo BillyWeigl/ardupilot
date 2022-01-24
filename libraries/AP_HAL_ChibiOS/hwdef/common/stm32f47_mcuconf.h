@@ -475,3 +475,5 @@
 
 // limit ISR count per byte
 #define STM32_I2C_ISR_LIMIT                 6
+
+

@@ -18,8 +18,6 @@
 
 #include "SIM_Scrimmage.h"
 
-#if HAL_SIM_SCRIMMAGE_ENABLED
-
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/stat.h>
@@ -132,5 +130,3 @@ void Scrimmage::update(const struct sitl_input &input)
 }
 
 } // namespace SITL
-
-#endif

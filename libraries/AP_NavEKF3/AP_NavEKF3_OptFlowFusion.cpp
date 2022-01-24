@@ -38,7 +38,7 @@ void NavEKF3_core::SelectFlowFusion()
     // Perform tilt check
     bool tiltOK = (prevTnb.c.z > frontend->DCM33FlowMin);
     // Constrain measurements to zero if takeoff is not detected and the height above ground
-    // is insufficient to achieve acceptable focus. This allows the vehicle to be picked up
+    // is insuffient to achieve acceptable focus. This allows the vehicle to be picked up
     // and carried to test optical flow operation
     if (!takeOffDetected && ((terrainState - stateStruct.position.z) < 0.5f)) {
         ofDataDelayed.flowRadXYcomp.zero();
@@ -76,7 +76,7 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
     // don't fuse flow data if it exceeds validity limits
     // don't update terrain offset if ground is being used as the zero height datum in the main filter
     bool cantFuseFlowData = ((frontend->_flowUse != FLOW_USE_TERRAIN)
-    || !gpsIsInUse
+    || gpsNotAvailable 
     || PV_AidingMode == AID_RELATIVE 
     || velHorizSq < 25.0f 
     || (MAX(ofDataDelayed.flowRadXY[0],ofDataDelayed.flowRadXY[1]) > frontend->_maxFlowRate));
@@ -90,13 +90,13 @@ void NavEKF3_core::EstimateTerrainOffset(const of_elements &ofDataDelayed)
         gndHgtValidTime_ms = imuSampleTime_ms;
 
         // propagate ground position state noise each time this is called using the difference in position since the last observations and an RMS gradient assumption
-        // limit distance to prevent intialisation after bad gps causing bad numerical conditioning
+        // limit distance to prevent intialisation afer bad gps causing bad numerical conditioning
         ftype distanceTravelledSq = sq(stateStruct.position[0] - prevPosN) + sq(stateStruct.position[1] - prevPosE);
         distanceTravelledSq = MIN(distanceTravelledSq, 100.0f);
         prevPosN = stateStruct.position[0];
         prevPosE = stateStruct.position[1];
 
-        // in addition to a terrain gradient error model, we also have the growth in uncertainty due to the copter's vertical velocity
+        // in addition to a terrain gradient error model, we also have the growth in uncertainty due to the copters vertical velocity
         ftype timeLapsed = MIN(0.001f * (imuSampleTime_ms - timeAtLastAuxEKF_ms), 1.0f);
         ftype Pincrement = (distanceTravelledSq * sq(frontend->_terrGradMax)) + sq(timeLapsed)*P[6][6];
         Popt += Pincrement;

@@ -14,8 +14,7 @@
 #include <AP_Math/AP_Math.h>
 #include "ExtendedKalmanFilter.h"
 #include "Variometer.h"
-#include <AP_TECS/AP_TECS.h>
-#include "SpeedToFly.h"
+#include <AP_SpdHgtControl/AP_SpdHgtControl.h>
 
 #ifndef HAL_SOARING_ENABLED
  #define HAL_SOARING_ENABLED !HAL_MINIMIZE_FEATURES
@@ -31,10 +30,8 @@
 
 class SoaringController {
     ExtendedKalmanFilter _ekf{};
-    AP_TECS &_tecs;
+    AP_SpdHgtControl &_spdHgt;
     Variometer _vario;
-    SpeedToFly _speedToFly;
-
     const AP_Vehicle::FixedWing &_aparm;
 
     // store aircraft location at last update
@@ -61,8 +58,6 @@ class SoaringController {
     LowPassFilter<float> _position_x_filter{1/60.0};
     LowPassFilter<float> _position_y_filter{1/60.0};
 
-    Variometer::PolarParams _polarParams;
-
 protected:
     AP_Int8 soar_active;
     AP_Float thermal_vspeed;
@@ -72,17 +67,17 @@ protected:
     AP_Float thermal_distance_ahead;
     AP_Int16 min_thermal_s;
     AP_Int16 min_cruise_s;
+    AP_Float polar_CD0;
+    AP_Float polar_B;
+    AP_Float polar_K;
     AP_Float alt_max;
     AP_Float alt_min;
     AP_Float alt_cutoff;
     AP_Float max_drift;
     AP_Float thermal_bank;
-    AP_Float soar_thermal_airspeed;
-    AP_Float soar_cruise_airspeed;
-    AP_Float soar_thermal_flap;
 
 public:
-    SoaringController(AP_TECS &tecs, const AP_Vehicle::FixedWing &parms);
+    SoaringController(AP_SpdHgtControl &spdHgt, const AP_Vehicle::FixedWing &parms);
 
     enum class LoiterStatus {
         DISABLED,
@@ -140,15 +135,6 @@ public:
     float get_circling_time() const {return _vario.tau;}
 
     float get_thermalling_radius() const;
-
-    float get_thermalling_target_airspeed();
-
-    float get_cruising_target_airspeed();
-
-    float get_thermalling_flap() const
-    {
-        return soar_thermal_flap;
-    }
 
 private:
 

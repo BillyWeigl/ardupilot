@@ -33,8 +33,6 @@ public:
         ICM40609 = 0,
         ICM42688,
         ICM42605,
-        ICM40605,
-        IIM42652,
     };
 
     // acclerometers on Invensense sensors will return values up to 32G
@@ -65,11 +63,8 @@ private:
     uint8_t gyro_instance;
     uint8_t accel_instance;
 
-    // reset FIFO configure1 register
-    uint8_t fifo_config1;
-
     // temp scaling for FIFO temperature
-    float temp_sensitivity;
+    const float temp_sensitivity = 1.0f/2.07;
     const float temp_zero = 25; // degC
     
     const enum Rotation rotation;

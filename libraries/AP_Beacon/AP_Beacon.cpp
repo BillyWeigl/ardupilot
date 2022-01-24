@@ -95,11 +95,11 @@ void AP_Beacon::init(void)
 
     // create backend
     if (_type == AP_BeaconType_Pozyx) {
-        _driver = new AP_Beacon_Pozyx(*this);
+        _driver = new AP_Beacon_Pozyx(*this, serial_manager);
     } else if (_type == AP_BeaconType_Marvelmind) {
-        _driver = new AP_Beacon_Marvelmind(*this);
+        _driver = new AP_Beacon_Marvelmind(*this, serial_manager);
     } else if (_type == AP_BeaconType_Nooploop) {
-        _driver = new AP_Beacon_Nooploop(*this);
+        _driver = new AP_Beacon_Nooploop(*this, serial_manager);
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (_type == AP_BeaconType_SITL) {

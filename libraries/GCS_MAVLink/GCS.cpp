@@ -210,27 +210,18 @@ void GCS::update_sensor_status_flags()
     }
 #endif
 
-#if HAL_LOGGING_ENABLED
+#if !defined(HAL_BUILD_AP_PERIPH) || defined(HAL_LOGGING_ENABLED)
     const AP_Logger &logger = AP::logger();
-    bool logging_present = logger.logging_present();
-    bool logging_enabled = logger.logging_enabled();
-    bool logging_healthy = !logger.logging_failed();
-#if !defined(HAL_BUILD_AP_PERIPH) || defined(HAL_PERIPH_ENABLE_GPS)
-    // some GPS units do logging, so they have to be healthy too:
-    logging_present |= gps.logging_present();
-    logging_enabled |= gps.logging_enabled();
-    logging_healthy &= !gps.logging_failed();
-#endif
-    if (logging_present) {
+    if (logger.logging_present() || gps.logging_present()) {  // primary logging only (usually File)
         control_sensors_present |= MAV_SYS_STATUS_LOGGING;
     }
-    if (logging_enabled) {
+    if (logger.logging_enabled() || gps.logging_enabled()) {
         control_sensors_enabled |= MAV_SYS_STATUS_LOGGING;
     }
-    if (logging_healthy) {
+    if (!logger.logging_failed() && !gps.logging_failed()) {
         control_sensors_health |= MAV_SYS_STATUS_LOGGING;
     }
-#endif  // HAL_LOGGING_ENABLED
+#endif
 
     // set motors outputs as enabled if safety switch is not disarmed (i.e. either NONE or ARMED)
 #if !defined(HAL_BUILD_AP_PERIPH)
@@ -260,20 +251,6 @@ void GCS::update_sensor_status_flags()
         }
         if (!fence->sys_status_failed()) {
             control_sensors_health |= MAV_SYS_STATUS_GEOFENCE;
-        }
-    }
-#endif
-
-    // airspeed
-#if AP_AIRSPEED_ENABLED
-    const AP_Airspeed *airspeed = AP_Airspeed::get_singleton();
-    if (airspeed && airspeed->enabled()) {
-        control_sensors_present |= MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE;
-        if (airspeed->use()) {
-            control_sensors_enabled |= MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE;
-        }
-        if (airspeed->all_healthy()) {
-            control_sensors_health |= MAV_SYS_STATUS_SENSOR_DIFFERENTIAL_PRESSURE;
         }
     }
 #endif

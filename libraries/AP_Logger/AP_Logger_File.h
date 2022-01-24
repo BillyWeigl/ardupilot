@@ -22,12 +22,8 @@ class AP_Logger_File : public AP_Logger_Backend
 public:
     // constructor
     AP_Logger_File(AP_Logger &front,
-                   LoggerMessageWriter_DFLogStart *);
-
-    static AP_Logger_Backend  *probe(AP_Logger &front,
-                                     LoggerMessageWriter_DFLogStart *ls) {
-        return new AP_Logger_File(front, ls);
-    }
+                   LoggerMessageWriter_DFLogStart *,
+                   const char *log_directory);
 
     // initialisation
     void Init() override;

@@ -58,9 +58,7 @@ extern const AP_HAL::HAL& hal;
     }
 
 Scheduler::Scheduler()
-{
-    CPU_ZERO(&_cpu_affinity);
-}
+{ }
 
 
 void Scheduler::init_realtime()
@@ -86,17 +84,6 @@ void Scheduler::init_realtime()
     }
 }
 
-void Scheduler::init_cpu_affinity()
-{
-    if (!CPU_COUNT(&_cpu_affinity)) {
-        return;
-    }
-
-    if (sched_setaffinity(0, sizeof(_cpu_affinity), &_cpu_affinity) != 0) {
-        AP_HAL::panic("Failed to set affinity for main process: %m");
-    }
-}
-
 void Scheduler::init()
 {
     int ret;
@@ -116,7 +103,6 @@ void Scheduler::init()
     _main_ctx = pthread_self();
 
     init_realtime();
-    init_cpu_affinity();
 
     /* set barrier to N + 1 threads: worker threads + main */
     unsigned n_threads = ARRAY_SIZE(sched_table) + 1;

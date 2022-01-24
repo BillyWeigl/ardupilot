@@ -1,12 +1,7 @@
 #pragma once
+#include "OpticalFlow_backend.h"
 
-#include "AP_OpticalFlow.h"
-
-#ifndef AP_OPTICALFLOW_HEREFLOW_ENABLED
-#define AP_OPTICALFLOW_HEREFLOW_ENABLED (AP_OPTICALFLOW_ENABLED && HAL_ENABLE_LIBUAVCAN_DRIVERS)
-#endif
-
-#if AP_OPTICALFLOW_HEREFLOW_ENABLED
+#if HAL_ENABLE_LIBUAVCAN_DRIVERS
 
 #include <AP_UAVCAN/AP_UAVCAN.h>
 
@@ -37,5 +32,4 @@ private:
     void _push_state(void);
 
 };
-
-#endif  // AP_OPTICALFLOW_HEREFLOW_ENABLED
+#endif //HAL_ENABLE_LIBUAVCAN_DRIVERS

@@ -41,7 +41,6 @@
 #include <AP_InertialSensor/AP_InertialSensor.h>                // ArduPilot Mega Inertial Sensor (accel & gyro) Library
 #include <AP_AHRS/AP_AHRS.h>                                    // AHRS (Attitude Heading Reference System) interface library for ArduPilot
 #include <AP_Mission/AP_Mission.h>                              // Mission command library
-#include <AP_Mission/AP_Mission_ChangeDetector.h>               // Mission command change detection library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h>        // Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_6DoF.h>   // 6DoF Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
@@ -49,8 +48,9 @@
 #include <AP_Motors/AP_Motors.h>            // AP Motors library
 #include <AP_Stats/AP_Stats.h>              // statistics library
 #include <Filter/Filter.h>                  // Filter library
+#include <AP_Airspeed/AP_Airspeed.h>        // needed for AHRS build
 #include <AP_Vehicle/AP_Vehicle.h>          // needed for AHRS build
-#include <AP_InertialNav/AP_InertialNav.h>  // inertial navigation library
+#include <AP_InertialNav/AP_InertialNav_NavEKF.h>  // ArduPilot Mega inertial navigation library
 #include <AC_WPNav/AC_WPNav.h>              // ArduCopter waypoint navigation library
 #include <AC_WPNav/AC_Loiter.h>             // ArduCopter Loiter Mode Library
 #include <AC_WPNav/AC_Circle.h>             // circle navigation library
@@ -124,7 +124,9 @@
 #if AP_TERRAIN_AVAILABLE
  # include <AP_Terrain/AP_Terrain.h>
 #endif
+#if OPTFLOW == ENABLED
  # include <AP_OpticalFlow/AP_OpticalFlow.h>
+#endif
 #if RANGEFINDER_ENABLED == ENABLED
  # include <AP_RangeFinder/AP_RangeFinder.h>
 #endif
@@ -155,7 +157,7 @@
  #include <AP_RPM/AP_RPM.h>
 #endif
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
 #include <AP_Scripting/AP_Scripting.h>
 #endif
 
@@ -166,6 +168,10 @@
 #include "Parameters.h"
 #if HAL_ADSB_ENABLED
 #include "avoidance_adsb.h"
+#endif
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#include <SITL/SITL.h>
 #endif
 
 #include "mode.h"
@@ -283,15 +289,13 @@ private:
         };
         // set surface to track
         void set_surface(Surface new_surface);
-        // initialise surface tracking
-        void init(Surface surf) { surface = surf; }
 
     private:
-        Surface surface;
+        Surface surface = Surface::GROUND;
         uint32_t last_update_ms;    // system time of last update to target_alt_cm
         uint32_t last_glitch_cleared_ms;    // system time of last handle glitch recovery
-        bool valid_for_logging;     // true if we have a desired target altitude
-        bool reset_target;          // true if target should be reset because of change in surface being tracked
+        bool valid_for_logging;     // true if target_alt_cm is valid for logging
+        bool reset_target;          // true if target should be reset because of change in tracking_state
     } surface_tracking;
 
 #if RPM_ENABLED == ENABLED
@@ -301,11 +305,15 @@ private:
     // Inertial Navigation EKF - different viewpoint
     AP_AHRS_View *ahrs_view;
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    SITL::SIM sitl;
+#endif
+
     // Arming/Disarming management class
     AP_Arming_Copter arming;
 
     // Optical flow sensor
-#if AP_OPTICALFLOW_ENABLED
+#if OPTFLOW == ENABLED
     OpticalFlow optflow;
 #endif
 
@@ -447,7 +455,7 @@ private:
     Location current_loc;
 
     // Inertial Navigation
-    AP_InertialNav inertial_nav;
+    AP_InertialNav_NavEKF inertial_nav;
 
     // Attitude, Position and Waypoint navigation objects
     // To-Do: move inertial nav up or other navigation variables down here
@@ -471,7 +479,7 @@ private:
 
     // Camera
 #if CAMERA == ENABLED
-    AP_Camera camera{MASK_LOG_CAMERA};
+    AP_Camera camera{MASK_LOG_CAMERA, current_loc};
 #endif
 
     // Camera/Antenna mount tracking and stabilisation stuff
@@ -553,7 +561,6 @@ private:
         uint8_t dynamic_flight          : 1;    // 0   // true if we are moving at a significant speed (used to turn on/off leaky I terms)
         uint8_t inverted_flight         : 1;    // 1   // true for inverted flight mode
         uint8_t in_autorotation         : 1;    // 2   // true when heli is in autorotation
-        bool coll_stk_low                  ;    // 3   // true when collective stick is on lower limit
     } heli_flags_t;
     heli_flags_t heli_flags;
 
@@ -638,7 +645,7 @@ private:
                              uint8_t &task_count,
                              uint32_t &log_bit) override;
     void fast_loop() override;
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     bool start_takeoff(float alt) override;
     bool set_target_location(const Location& target_loc) override;
     bool set_target_pos_NED(const Vector3f& target_pos, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative, bool terrain_alt) override;
@@ -649,7 +656,7 @@ private:
     bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) override;
     bool get_circle_radius(float &radius_m) override;
     bool set_circle_rate(float rate_dps) override;
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
     void rc_loop();
     void throttle_loop();
     void update_batt_compass(void);
@@ -762,7 +769,6 @@ private:
 #if MODE_AUTOROTATE_ENABLED == ENABLED
     void heli_set_autorotation(bool autotrotation);
 #endif
-    void update_collective_low_flag(int16_t throttle_control);
     // inertia.cpp
     void read_inertia();
 
@@ -785,6 +791,7 @@ private:
     void Log_Write_Control_Tuning();
     void Log_Write_Attitude();
     void Log_Write_EKF_POS();
+    void Log_Write_MotBatt();
     void Log_Write_Data(LogDataID id, int32_t value);
     void Log_Write_Data(LogDataID id, uint32_t value);
     void Log_Write_Data(LogDataID id, int16_t value);
@@ -860,8 +867,11 @@ private:
     void read_rangefinder(void);
     bool rangefinder_alt_ok() const;
     bool rangefinder_up_ok() const;
+    void rpm_update();
     void update_optical_flow(void);
     void compass_cal_update(void);
+    void init_proximity();
+    void update_proximity();
 
     // RC_Channel.cpp
     void save_trim();
@@ -896,9 +906,9 @@ private:
     void userhook_MediumLoop();
     void userhook_SlowLoop();
     void userhook_SuperSlowLoop();
-    void userhook_auxSwitch1(const RC_Channel::AuxSwitchPos ch_flag);
-    void userhook_auxSwitch2(const RC_Channel::AuxSwitchPos ch_flag);
-    void userhook_auxSwitch3(const RC_Channel::AuxSwitchPos ch_flag);
+    void userhook_auxSwitch1(uint8_t ch_flag);
+    void userhook_auxSwitch2(uint8_t ch_flag);
+    void userhook_auxSwitch3(uint8_t ch_flag);
 
     // vehicle specific waypoint info helpers
     bool get_wp_distance_m(float &distance) const override;
@@ -970,7 +980,7 @@ private:
 #if MODE_SMARTRTL_ENABLED == ENABLED
     ModeSmartRTL mode_smartrtl;
 #endif
-#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
+#if !HAL_MINIMIZE_FEATURES && OPTFLOW == ENABLED
     ModeFlowHold mode_flowhold;
 #endif
 #if MODE_ZIGZAG_ENABLED == ENABLED

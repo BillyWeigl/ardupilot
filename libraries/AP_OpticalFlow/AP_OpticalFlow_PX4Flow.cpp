@@ -16,16 +16,13 @@
   driver for PX4Flow optical flow sensor
  */
 
-#include "AP_OpticalFlow_PX4Flow.h"
-
-#if AP_OPTICALFLOW_PX4FLOW_ENABLED
-
 #include <AP_HAL/AP_HAL.h>
+#include "AP_OpticalFlow_PX4Flow.h"
 #include <AP_Math/crc.h>
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_HAL/I2CDevice.h>
 #include <utility>
-#include "AP_OpticalFlow.h"
+#include "OpticalFlow.h"
 #include <stdio.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
 
@@ -138,5 +135,3 @@ void AP_OpticalFlow_PX4Flow::timer(void)
 
     _update_frontend(state);
 }
-
-#endif  // AP_OPTICALFLOW_PX4FLOW_ENABLED

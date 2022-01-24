@@ -167,15 +167,24 @@ void AP_NMEA_Output::update()
             continue;
         }
 
-        _uart[i]->write(gga);
-        _uart[i]->write(gga_end);
+        if (gga_res != -1) {
+            _uart[i]->write(gga);
+            _uart[i]->write(gga_end);
+        }
 
-        _uart[i]->write(rmc);
-        _uart[i]->write(rmc_end);
+        if (rmc_res != -1) {
+            _uart[i]->write(rmc);
+            _uart[i]->write(rmc_end);
+        }
     }
 
-    free(gga);
-    free(rmc);
+    if (gga_res != -1) {
+        free(gga);
+    }
+
+    if (rmc_res != -1) {
+        free(rmc);
+    }
 }
 
 #endif  // HAL_NMEA_OUTPUT_ENABLED

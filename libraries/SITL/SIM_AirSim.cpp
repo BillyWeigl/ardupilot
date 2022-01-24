@@ -18,8 +18,6 @@
 
 #include "SIM_AirSim.h"
 
-#if HAL_SIM_AIRSIM_ENABLED
-
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -425,5 +423,3 @@ void AirSim::report_FPS(void)
         last_frame_count = state.timestamp;
     }
 }
-
-#endif  // HAL_SIM_AIRSIM_ENABLED

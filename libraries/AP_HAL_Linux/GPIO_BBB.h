@@ -2,12 +2,7 @@
 
 #include "AP_HAL_Linux.h"
 
-#define CM_PER_BASE          0x44E00000
-#define CM_PER_GPIO1_CLKCTRL 0x2B
-#define CM_PER_GPIO2_CLKCTRL 0x2C
-#define CM_PER_GPIO3_CLKCTRL 0x2D
-
-#define CM_PER_BASE_SIZE     0x00003FFF
+#define SYSFS_GPIO_DIR "/sys/class/gpio"
 
 #define GPIO0_BASE 0x44E07000
 #define GPIO1_BASE 0x4804C000

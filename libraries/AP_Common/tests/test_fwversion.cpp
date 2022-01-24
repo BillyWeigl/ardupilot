@@ -1,6 +1,3 @@
-
-#define APM_BUILD_DIRECTORY APM_BUILD_UNKNOWN
-
 #include <AP_gtest.h>
 #include <AP_Common/AP_FWVersion.h>
 #include <GCS_MAVLink/GCS_Dummy.h>

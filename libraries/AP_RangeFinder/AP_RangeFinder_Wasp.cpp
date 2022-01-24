@@ -76,7 +76,7 @@ AP_RangeFinder_Wasp::AP_RangeFinder_Wasp(RangeFinder::RangeFinder_State &_state,
 }
 
 // read - return last value measured by sensor
-bool AP_RangeFinder_Wasp::get_reading(float &reading_m) {
+bool AP_RangeFinder_Wasp::get_reading(uint16_t &reading_cm) {
     if (uart == nullptr) {
         return false;
     }
@@ -118,7 +118,7 @@ bool AP_RangeFinder_Wasp::get_reading(float &reading_m) {
         return false;
     }
 
-    reading_m = sum / count;
+    reading_cm = 100 * sum / count;
     set_status(RangeFinder::Status::Good);
 
     return true;
@@ -127,7 +127,7 @@ bool AP_RangeFinder_Wasp::get_reading(float &reading_m) {
 #define COMMAND_BUFFER_LEN 15
 
 void AP_RangeFinder_Wasp::update(void) {
-    if (!get_reading(state.distance_m)) {
+    if (!get_reading(state.distance_cm)) {
         set_status(RangeFinder::Status::NoData);
     }
 

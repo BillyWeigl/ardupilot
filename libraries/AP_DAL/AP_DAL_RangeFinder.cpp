@@ -27,7 +27,7 @@ AP_DAL_RangeFinder::AP_DAL_RangeFinder()
     }
     return;
 failed:
-    AP_BoardConfig::allocation_error("DAL backends");
+    AP_BoardConfig::config_error("Unable to allocate DAL backends");
 #endif
 }
 

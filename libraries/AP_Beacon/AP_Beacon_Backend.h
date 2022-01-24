@@ -59,6 +59,4 @@ protected:
 
     // yaw correction methods
     Vector3f correct_for_orient_yaw(const Vector3f &vector);
-
-    AP_HAL::UARTDriver *uart;
 };

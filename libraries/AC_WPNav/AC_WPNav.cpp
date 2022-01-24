@@ -399,11 +399,13 @@ void AC_WPNav::shift_wp_origin_and_destination_to_current_pos_xy()
     _pos_control.init_xy_controller();
 
     // get current and target locations
-    const Vector2f& curr_pos = _inav.get_position_xy_cm();
+    const Vector3f& curr_pos = _inav.get_position();
 
     // shift origin and destination horizontally
-    _origin.xy() = curr_pos;
-    _destination.xy() = curr_pos;
+    _origin.x = curr_pos.x;
+    _origin.y = curr_pos.y;
+    _destination.x = curr_pos.x;
+    _destination.y = curr_pos.y;
 }
 
 /// shifts the origin and destination horizontally to the achievable stopping point
@@ -458,7 +460,7 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     _pos_control.update_pos_offset_z(terr_offset);
 
     // get current position and adjust altitude to origin and destination's frame (i.e. _frame)
-    const Vector3f &curr_pos = _inav.get_position_neu_cm() - Vector3f{0, 0, terr_offset};
+    const Vector3f &curr_pos = _inav.get_position() - Vector3f{0, 0, terr_offset};
 
     // Use _track_scalar_dt to slow down S-Curve time to prevent target moving too far in front of aircraft
     Vector3f curr_target_vel = _pos_control.get_vel_desired_cms();
@@ -469,14 +471,14 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
     if (is_positive(curr_target_vel.length())) {
         Vector3f track_direction = curr_target_vel.normalized();
         const float track_error = _pos_control.get_pos_error_cm().dot(track_direction);
-        const float track_velocity = _inav.get_velocity_neu_cms().dot(track_direction);
+        const float track_velocity = _inav.get_velocity().dot(track_direction);
         // set time scaler to be consistent with the achievable aircraft speed with a 5% buffer for short term variation.
         track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
     }
 
     float vel_time_scalar = 1.0;
     if (is_positive(_wp_desired_speed_xy_cms)) {
-        update_vel_accel(_terrain_vel, _terrain_accel, dt, 0.0, 0.0);
+        update_vel_accel(_terrain_vel, _terrain_accel, dt, false);
         shape_vel_accel( _wp_desired_speed_xy_cms * offset_z_scaler, 0.0,
             _terrain_vel, _terrain_accel,
             -_wp_accel_cmss, _wp_accel_cmss, _pos_control.get_shaping_jerk_xy_cmsss(), dt, true);
@@ -559,13 +561,15 @@ void AC_WPNav::update_track_with_speed_accel_limits()
 /// get_wp_distance_to_destination - get horizontal distance to destination in cm
 float AC_WPNav::get_wp_distance_to_destination() const
 {
-    return get_horizontal_distance_cm(_inav.get_position_xy_cm(), _destination.xy());
+    // get current location
+    const Vector3f &curr = _inav.get_position();
+    return norm(_destination.x-curr.x,_destination.y-curr.y);
 }
 
 /// get_wp_bearing_to_destination - get bearing to next waypoint in centi-degrees
 int32_t AC_WPNav::get_wp_bearing_to_destination() const
 {
-    return get_bearing_cd(_inav.get_position_xy_cm(), _destination.xy());
+    return get_bearing_cd(_inav.get_position(), _destination);
 }
 
 /// update_wpnav - run the wp controller - should be called at 100hz or higher
@@ -614,7 +618,7 @@ bool AC_WPNav::get_terrain_offset(float& offset_cm)
         return false;
     case AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER:
         if (_rangefinder_healthy) {
-            offset_cm = _inav.get_position_z_up_cm() - _rangefinder_alt_cm;
+            offset_cm = _inav.get_altitude() - _rangefinder_alt_cm;
             return true;
         }
         return false;
@@ -624,7 +628,7 @@ bool AC_WPNav::get_terrain_offset(float& offset_cm)
         AP_Terrain *terrain = AP::terrain();
         if (terrain != nullptr &&
             terrain->height_above_terrain(terr_alt, true)) {
-            offset_cm = _inav.get_position_z_up_cm() - (terr_alt * 100.0);
+            offset_cm = _inav.get_altitude() - (terr_alt * 100.0f);
             return true;
         }
 #endif

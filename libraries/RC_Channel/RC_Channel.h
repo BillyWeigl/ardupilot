@@ -52,9 +52,6 @@ public:
     // ignores trim and deadzone
     float       norm_input_ignore_trim() const;
 
-    // returns true if input is within deadzone of min
-    bool        within_min_dz() const;
-
     uint8_t     percent_input() const;
     int16_t     pwm_to_range() const;
     int16_t     pwm_to_range_dz(uint16_t dead_zone) const;
@@ -74,7 +71,7 @@ public:
     void       set_override(const uint16_t v, const uint32_t timestamp_ms);
     bool       has_override() const;
 
-    float    stick_mixing(const float servo_in);
+    int16_t    stick_mixing(const int16_t servo_in);
 
     // get control input with zero deadzone
     int16_t    get_control_in_zero_dz(void) const;
@@ -93,9 +90,6 @@ public:
 
     // set and save trim if changed
     void       set_and_save_radio_trim(int16_t val) { radio_trim.set_and_save_ifchanged(val);}
-
-    // check if any of the trim/min/max param are configured in storage, this would indicate that the user has done a calibration at somepoint
-    bool       configured_in_storage() { return radio_min.configured_in_storage() || radio_max.configured_in_storage() || radio_trim.configured_in_storage(); }
 
     ChannelType get_type(void) const { return type_in; }
 
@@ -213,8 +207,6 @@ public:
         EKF_YAW_RESET =      104, // trigger yaw reset attempt
         GPS_DISABLE_YAW =    105, // disable GPS yaw for testing
         DISABLE_AIRSPEED_USE = 106, // equivalent to AIRSPEED_USE 0
-        FW_AUTOTUNE =          107, // fixed wing auto tune
-        QRTL =               108, // QRTL mode
         // if you add something here, make sure to update the documentation of the parameter in RC_Channel.cpp!
         // also, if you add an option >255, you will need to fix duplicate_options_exist
 
@@ -224,9 +216,6 @@ public:
         SIMPLE_HEADING_RESET = 152, // reset simple mode refernce heading to current
         ARMDISARM =          153, // arm or disarm vehicle
         ARMDISARM_AIRMODE =  154, // arm or disarm vehicle enabling airmode
-        TRIM_TO_CURRENT_SERVO_RC = 155, // trim to current servo and RC
-        TORQEEDO_CLEAR_ERR = 156, // clear torqeedo error
-        EMERGENCY_LANDING_EN = 157, //Force long FS action to FBWA for landing out of range
 
         // inputs from 200 will eventually used to replace RCMAP
         ROLL =               201, // roll input
@@ -503,13 +492,7 @@ public:
         return get_singleton() != nullptr && (_options & uint32_t(Option::SUPPRESS_CRSF_MESSAGE));
     }
 
-    bool multiple_receiver_support() const {
-        return _options & uint32_t(Option::MULTI_RECEIVER_SUPPORT);
-    }
 
-    bool use_crsf_lq_as_rssi(void) const {
-        return get_singleton() != nullptr && (_options & uint32_t(Option::USE_CRSF_LQ_AS_RSSI)) != 0;
-    }
 
     // returns true if overrides should time out.  If true is returned
     // then returned_timeout_ms will contain the timeout in
@@ -556,10 +539,6 @@ public:
     // flight_mode_channel_number must be overridden in vehicle specific code
     virtual int8_t flight_mode_channel_number() const = 0;
 
-    // set and get calibrating flag, stops arming if true
-    void calibrating(bool b) { gcs_is_calibrating = b; }
-    bool calibrating() { return gcs_is_calibrating; }
-
 protected:
 
     enum class Option {
@@ -573,8 +552,6 @@ protected:
         ALLOW_SWITCH_REV        = (1U << 7), // honor the reversed flag on switches
         CRSF_CUSTOM_TELEMETRY   = (1U << 8), // use passthrough data for crsf telemetry
         SUPPRESS_CRSF_MESSAGE   = (1U << 9), // suppress CRSF mode/rate message for ELRS systems
-        MULTI_RECEIVER_SUPPORT  = (1U << 10), // allow multiple receivers
-        USE_CRSF_LQ_AS_RSSI     = (1U << 11), // returns CRSF link quality as RSSI value, instead of RSSI
     };
 
     void new_override_received() {
@@ -598,9 +575,6 @@ private:
 
     // Allow override by default at start
     bool _gcs_overrides_enabled = true;
-
-    // true if GCS is performing a RC calibration
-    bool gcs_is_calibrating;
 };
 
 RC_Channels &rc();

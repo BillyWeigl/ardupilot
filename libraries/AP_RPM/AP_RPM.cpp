@@ -20,8 +20,6 @@
 #include "RPM_HarmonicNotch.h"
 #include "RPM_ESC_Telem.h"
 
-#include <AP_Logger/AP_Logger.h>
-
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -187,10 +185,6 @@ void AP_RPM::update(void)
 
             drivers[i]->update();
         }
-    }
-
-    if (enabled(0) || enabled(1)) {
-        AP::logger().Write_RPM(*this);
     }
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AP_OpticalFlow.h"
+#include "OpticalFlow.h"
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
 

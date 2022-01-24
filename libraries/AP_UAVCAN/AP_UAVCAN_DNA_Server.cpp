@@ -23,12 +23,12 @@
 #include "AP_UAVCAN_DNA_Server.h"
 #include "AP_UAVCAN.h"
 #include <StorageManager/StorageManager.h>
+#include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <uavcan/protocol/dynamic_node_id/Allocation.hpp>
 #include <GCS_MAVLink/GCS.h>
 #include <AP_Logger/AP_Logger.h>
 #include "AP_UAVCAN_Clock.h"
-#include <AP_BoardConfig/AP_BoardConfig.h>
 extern const AP_HAL::HAL& hal;
 
 #define NODEDATA_MAGIC 0xAC01
@@ -62,7 +62,8 @@ void AP_UAVCAN_DNA_Server::subscribe_msgs(AP_UAVCAN* ap_uavcan)
     uavcan::Subscriber<uavcan::protocol::dynamic_node_id::Allocation, AllocationCb> *AllocationListener;
     AllocationListener = new uavcan::Subscriber<uavcan::protocol::dynamic_node_id::Allocation, AllocationCb>(*node);
     if (AllocationListener == nullptr) {
-        AP_BoardConfig::allocation_error("AP_UAVCAN_DNA: AllocationListener");
+        AP_HAL::panic("Allocation Subscriber allocation failed\n\r");
+        return;
     }
     const int alloc_listener_res = AllocationListener->start(AllocationCb(ap_uavcan, &trampoline_handleAllocation));
     if (alloc_listener_res < 0) {
@@ -76,7 +77,8 @@ void AP_UAVCAN_DNA_Server::subscribe_msgs(AP_UAVCAN* ap_uavcan)
     uavcan::Subscriber<uavcan::protocol::NodeStatus, NodeStatusCb> *NodeStatusListener;
     NodeStatusListener = new uavcan::Subscriber<uavcan::protocol::NodeStatus, NodeStatusCb>(*node);
     if (NodeStatusListener == nullptr) {
-        AP_BoardConfig::allocation_error("AP_UAVCAN_DNA: NodeStatusListener");
+        AP_HAL::panic("NodeStatus Subscriber allocation failed\n\r");
+        return;
     }
     const int nodestatus_listener_res = NodeStatusListener->start(NodeStatusCb(ap_uavcan, &trampoline_handleNodeStatus));
     if (nodestatus_listener_res < 0) {
@@ -278,7 +280,7 @@ bool AP_UAVCAN_DNA_Server::init(AP_UAVCAN *ap_uavcan)
     //Setup publisher for this driver index
     allocation_pub[driver_index] = new uavcan::Publisher<uavcan::protocol::dynamic_node_id::Allocation>(*_node);
     if (allocation_pub[driver_index] == nullptr) {
-        AP_BoardConfig::allocation_error("AP_UAVCAN_DNA: allocation_pub[%d]", driver_index);
+        return false;
     }
 
     int res = allocation_pub[driver_index]->init(uavcan::TransferPriority::Default);
@@ -290,7 +292,7 @@ bool AP_UAVCAN_DNA_Server::init(AP_UAVCAN *ap_uavcan)
     //Setup GetNodeInfo Client
     getNodeInfo_client[driver_index] = new uavcan::ServiceClient<uavcan::protocol::GetNodeInfo>(*_node);
     if (getNodeInfo_client[driver_index] == nullptr) {
-        AP_BoardConfig::allocation_error("AP_UAVCAN_DNA: getNodeInfo_client[%d]", driver_index);
+        return false;
     }
 
     res = getNodeInfo_client[driver_index]->init();

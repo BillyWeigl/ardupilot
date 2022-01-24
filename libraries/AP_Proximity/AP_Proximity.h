@@ -48,7 +48,7 @@ public:
     // Proximity driver types
     enum class Type {
         None    = 0,
-        // 1 was SF40C_v09
+        SF40C_v09 = 1,
         MAV     = 2,
         TRTOWER = 3,
         RangeFinder = 4,
@@ -60,7 +60,6 @@ public:
         SITL    = 10,
         AirSimSITL = 12,
 #endif
-        CYGBOT_D1 = 13,
     };
 
     enum class Status {

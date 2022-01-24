@@ -151,11 +151,11 @@ private:
     /**
      * @brief Read serial interface and calculate new distance
      *
-     * @param reading_m
+     * @param reading_cm
      * @return true
      * @return false
      */
-    bool get_reading(float &reading_m) override;
+    bool get_reading(uint16_t &reading_cm) override;
 
     /**
      * @brief Timeout between messages

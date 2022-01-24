@@ -90,7 +90,7 @@ public:
 
     // pilot input processing
     void get_pilot_desired_lean_angles(float &roll_out, float &pitch_out, float angle_max, float angle_limit) const;
-    float get_pilot_desired_yaw_rate(float yaw_in);
+    float get_pilot_desired_yaw_rate(int16_t stick_angle);
     float get_pilot_desired_throttle() const;
 
     // returns climb target_rate reduced to avoid obstacles and
@@ -315,9 +315,7 @@ protected:
     const char *name() const override { return "ACRO"; }
     const char *name4() const override { return "ACRO"; }
 
-    // get_pilot_desired_angle_rates - transform pilot's normalised roll pitch and yaw input into a desired lean angle rates
-    // inputs are -1 to 1 and the function returns desired angle rates in centi-degrees-per-second
-    void get_pilot_desired_angle_rates(float roll_in, float pitch_in, float yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
+    void get_pilot_desired_angle_rates(int16_t roll_in, int16_t pitch_in, int16_t yaw_in, float &roll_out, float &pitch_out, float &yaw_out);
 
     float throttle_hover() const override;
 
@@ -441,9 +439,6 @@ public:
         FUNCTOR_BIND_MEMBER(&ModeAuto::verify_command, bool, const AP_Mission::Mission_Command &),
         FUNCTOR_BIND_MEMBER(&ModeAuto::exit_mission, void)};
 
-    // Mission change detector
-    AP_Mission_ChangeDetector mis_change_detector;
-
 protected:
 
     const char *name() const override { return auto_RTL? "AUTO RTL" : "AUTO"; }
@@ -492,6 +487,7 @@ private:
 
     void do_takeoff(const AP_Mission::Mission_Command& cmd);
     void do_nav_wp(const AP_Mission::Mission_Command& cmd);
+    void do_nav_time_wp(const AP_Mission::Mission_Command& cmd);
     bool set_next_wp(const AP_Mission::Mission_Command& current_cmd, const Location &default_loc);
     void do_land(const AP_Mission::Mission_Command& cmd);
     void do_loiter_unlimited(const AP_Mission::Mission_Command& cmd);
@@ -532,6 +528,7 @@ private:
     bool verify_within_distance();
     bool verify_yaw();
     bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);
+    bool verify_nav_time_wp(const AP_Mission::Mission_Command& cmd);
     bool verify_circle(const AP_Mission::Mission_Command& cmd);
     bool verify_spline_wp(const AP_Mission::Mission_Command& cmd);
 #if NAV_GUIDED == ENABLED
@@ -577,6 +574,15 @@ private:
     } nav_payload_place;
 
     bool waiting_to_start;  // true if waiting for vehicle to be armed or EKF origin before starting mission
+
+    // variables to detect mission changes
+    static const uint8_t mis_change_detect_cmd_max = 3;
+    struct {
+        uint32_t last_change_time_ms;       // local copy of last time mission was changed
+        uint16_t curr_cmd_index;            // local copy of AP_Mission's current command index
+        uint8_t cmd_count;                  // number of commands in the cmd array
+        AP_Mission::Mission_Command cmd[mis_change_detect_cmd_max]; // local copy of the next few mission commands
+    } mis_change_detect = {};
 
     // True if we have entered AUTO to perform a DO_LAND_START landing sequence and we should report as AUTO RTL mode
     bool auto_RTL;
@@ -764,7 +770,7 @@ private:
 };
 
 
-#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
+#if !HAL_MINIMIZE_FEATURES && OPTFLOW == ENABLED
 /*
   class to support FLOWHOLD mode, which is a position hold mode using
   optical flow directly, avoiding the need for a rangefinder
@@ -850,7 +856,7 @@ private:
     // last time there was significant stick input
     uint32_t last_stick_input_ms;
 };
-#endif // AP_OPTICALFLOW_ENABLED
+#endif // OPTFLOW
 
 
 class ModeGuided : public Mode {
@@ -872,15 +878,7 @@ public:
 
     bool requires_terrain_failsafe() const override { return true; }
 
-    // Sets guided's angular target submode: Using a rotation quaternion, angular velocity, and climbrate or thrust (depends on user option)
-    // attitude_quat: IF zero: ang_vel (angular velocity) must be provided even if all zeroes
-    //                IF non-zero: attitude_control is performed using both the attitude quaternion and angular velocity
-    // ang_vel: angular velocity (rad/s)
-    // climb_rate_cms_or_thrust: represents either the climb_rate (cm/s) or thrust scaled from [0, 1], unitless
-    // use_thrust: IF true: climb_rate_cms_or_thrust represents thrust
-    //             IF false: climb_rate_cms_or_thrust represents climb_rate (cm/s)
-    void set_angle(const Quaternion &attitude_quat, const Vector3f &ang_vel, float climb_rate_cms_or_thrust, bool use_thrust);
-
+    void set_angle(const Quaternion &q, float climb_rate_cms_or_thrust, bool use_yaw_rate, float yaw_rate_rads, bool use_thrust);
     bool set_destination(const Vector3f& destination, bool use_yaw = false, float yaw_cd = 0.0, bool use_yaw_rate = false, float yaw_rate_cds = 0.0, bool yaw_relative = false, bool terrain_alt = false);
     bool set_destination(const Location& dest_loc, bool use_yaw = false, float yaw_cd = 0.0, bool use_yaw_rate = false, float yaw_rate_cds = 0.0, bool yaw_relative = false);
     bool get_wp(Location &loc) const override;
@@ -925,7 +923,7 @@ public:
     void angle_control_start();
     void angle_control_run();
 
-    // return guided mode timeout in milliseconds. Only used for velocity, acceleration, angle control, and angular rate control
+    // return guided mode timeout in milliseconds.  Only used for velocity, acceleration and angle control
     uint32_t get_timeout_ms() const;
 
     bool use_pilot_yaw() const override;
@@ -971,7 +969,7 @@ private:
     // controls which controller is run (pos or vel):
     SubMode guided_mode = SubMode::TakeOff;
     bool send_notification;     // used to send one time notification to ground station
-    bool takeoff_complete;      // true once takeoff has completed (used to trigger retracting of landing gear)
+
 };
 
 
@@ -1616,7 +1614,7 @@ protected:
     uint32_t last_log_ms;   // system time of last time desired velocity was logging
 };
 
-class ModeZigZag : public Mode {        
+class ModeZigZag : public Mode {
 
 public:
     ModeZigZag(void);
@@ -1753,7 +1751,7 @@ private:
         FLARE,
         TOUCH_DOWN,
         BAIL_OUT } phase_switch;
-        
+
     enum class Navigation_Decision {
         USER_CONTROL_STABILISED,
         STRAIGHT_AHEAD,

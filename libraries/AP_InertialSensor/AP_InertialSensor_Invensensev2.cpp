@@ -14,7 +14,7 @@
 */
 /*
   driver for all supported Invensensev2 IMUs
-  ICM20948, ICM20648 and ICM20649
+  ICM-20608 and ICM-20602
  */
 
 #include <assert.h>

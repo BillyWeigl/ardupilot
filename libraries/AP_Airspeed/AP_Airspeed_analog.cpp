@@ -41,10 +41,11 @@ bool AP_Airspeed_Analog::init()
 // read the airspeed sensor
 bool AP_Airspeed_Analog::get_differential_pressure(float &pressure)
 {
-    // allow pin to change
-    if (_source == nullptr || !_source->set_pin(get_pin())) {
+    if (_source == nullptr) {
         return false;
     }
+    // allow pin to change
+    _source->set_pin(get_pin());
     pressure = _source->voltage_average_ratiometric() * VOLTS_TO_PASCAL / get_psi_range();
     return true;
 }

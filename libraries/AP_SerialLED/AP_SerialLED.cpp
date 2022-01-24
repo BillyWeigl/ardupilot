@@ -24,6 +24,10 @@ extern const AP_HAL::HAL& hal;
 
 AP_SerialLED AP_SerialLED::singleton;
 
+AP_SerialLED::AP_SerialLED()
+{
+}
+
 // set number of NeoPixels per pin
 bool AP_SerialLED::set_num_neopixel(uint8_t chan, uint8_t num_leds)
 {

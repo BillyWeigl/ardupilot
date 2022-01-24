@@ -192,9 +192,7 @@ protected:
     float rpm[12];
     uint8_t rcin_chan_count;
     float rcin[12];
-
-    virtual float rangefinder_beam_width() const { return 0; }
-    virtual float perpendicular_distance_to_rangefinder_surface() const;
+    float range = -1.0f;                 // externally supplied rangefinder value, assumed to have been corrected for vehicle attitude
 
     struct {
         // data from simulated laser scanner, if available

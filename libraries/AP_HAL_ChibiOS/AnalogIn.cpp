@@ -36,17 +36,7 @@ extern AP_IOMCU iomcu;
 #define ANLOGIN_DEBUGGING 0
 
 // base voltage scaling for 12 bit 3.3V ADC
-#define VOLTAGE_SCALING (3.3f / ((1 << 12) - 1))
-
-// voltage divider is usually 1/(10/(20+10))
-#ifndef HAL_IOMCU_VSERVO_SCALAR
-  #define HAL_IOMCU_VSERVO_SCALAR 3
-#endif
-
-// voltage divider is usually not present
-#ifndef HAL_IOMCU_VRSSI_SCALAR
-  #define HAL_IOMCU_VRSSI_SCALAR 1
-#endif
+#define VOLTAGE_SCALING (3.3f/(1<<12))
 
 #if ANLOGIN_DEBUGGING
  # define Debug(fmt, args ...)  do {printf("%s:%d: " fmt "\n", __FUNCTION__, __LINE__, ## args); } while(0)
@@ -150,26 +140,11 @@ float AnalogSource::voltage_latest()
     return _pin_scaler() * read_latest();
 }
 
-bool AnalogSource::set_pin(uint8_t pin)
+void AnalogSource::set_pin(uint8_t pin)
 {
     if (_pin == pin) {
-        return true;
+        return;
     }
-    bool found_pin = false;
-    if (_pin == ANALOG_SERVO_VRSSI_PIN) {
-        found_pin = true;
-    } else {
-        for (uint8_t i=0; i<ADC_GRP1_NUM_CHANNELS; i++) {
-            if (AnalogIn::pin_config[i].channel == pin) {
-                found_pin = true;
-                break;
-            }
-        }
-    }
-    if (!found_pin) {
-        return false;
-    }
-
     WITH_SEMAPHORE(_semaphore);
     _pin = pin;
     _sum_value = 0;
@@ -178,7 +153,6 @@ bool AnalogSource::set_pin(uint8_t pin)
     _latest_value = 0;
     _value = 0;
     _value_ratiometric = 0;
-    return true;
 }
 
 /*
@@ -265,8 +239,8 @@ void AnalogIn::init()
         } else {
             adcgrpcfg.sqr[2] |= chan << (6*(i-9));
         }
-#elif defined(STM32F3) || defined(STM32G4) || defined(STM32L4)
-#if defined(STM32G4) || defined(STM32L4)
+#elif defined(STM32F3) || defined(STM32G4)
+#if defined(STM32G4)
         adcgrpcfg.smpr[chan/10] |= ADC_SMPR_SMP_640P5 << (3*(chan%10));
 #else
         adcgrpcfg.smpr[chan/10] |= ADC_SMPR_SMP_601P5 << (3*(chan%10));
@@ -472,8 +446,8 @@ void AnalogIn::_timer_tick(void)
 
 #if HAL_WITH_IO_MCU
     // now handle special inputs from IOMCU
-    _servorail_voltage = iomcu.get_vservo_adc_count() * (VOLTAGE_SCALING * HAL_IOMCU_VSERVO_SCALAR);
-    _rssi_voltage = iomcu.get_vrssi_adc_count() * (VOLTAGE_SCALING *  HAL_IOMCU_VRSSI_SCALAR);
+    _servorail_voltage = iomcu.get_vservo();
+    _rssi_voltage = iomcu.get_vrssi();
 #endif
 
     for (uint8_t i=0; i<ADC_GRP1_NUM_CHANNELS; i++) {

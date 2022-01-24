@@ -15,7 +15,7 @@
 
 #include "AP_Generator.h"
 
-#if HAL_GENERATOR_ENABLED
+#if GENERATOR_ENABLED
 
 #include "AP_Generator_IE_650_800.h"
 #include "AP_Generator_IE_2400.h"

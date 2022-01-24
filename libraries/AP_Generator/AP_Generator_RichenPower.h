@@ -3,7 +3,7 @@
 
 #include "AP_Generator_Backend.h"
 
-#if HAL_GENERATOR_ENABLED
+#if GENERATOR_ENABLED
 
 #include <AP_Common/AP_Common.h>
 #include <SRV_Channel/SRV_Channel.h>

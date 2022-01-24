@@ -337,7 +337,7 @@ bool AP_RangeFinder_LightWareI2C::sf20_init()
 }
 
 // read - return last value measured by sensor
-bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
+bool AP_RangeFinder_LightWareI2C::legacy_get_reading(uint16_t &reading_cm)
 {
     be16_t val;
 
@@ -348,9 +348,9 @@ bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
         int16_t signed_val = int16_t(be16toh(val));
         if (signed_val < 0) {
             // some lidar firmwares will return 65436 for out of range
-            reading_m = uint16_t(max_distance_cm() + LIGHTWARE_OUT_OF_RANGE_ADD_CM) * 0.01f;
+            reading_cm = uint16_t(max_distance_cm() + LIGHTWARE_OUT_OF_RANGE_ADD_CM);
         } else {
-            reading_m = uint16_t(signed_val) * 0.01f;
+            reading_cm = uint16_t(signed_val);
         }
         return true;
     }
@@ -358,7 +358,7 @@ bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
 }
 
 // read - return last value measured by sf20 sensor
-bool AP_RangeFinder_LightWareI2C::sf20_get_reading(float &reading_m)
+bool AP_RangeFinder_LightWareI2C::sf20_get_reading(uint16_t &reading_cm)
 {
     // Parses up to 5 ASCII streams for LiDAR data.
     // If a parse fails, the stream measurement is not updated until it is successfully read in the future.
@@ -378,7 +378,7 @@ bool AP_RangeFinder_LightWareI2C::sf20_get_reading(float &reading_m)
     }
 
     if (i==0) {
-        reading_m = sf20_stream_val[0] * 0.01f;
+        reading_cm = sf20_stream_val[0];
     }
 
     // Increment the stream sequence
@@ -462,7 +462,7 @@ void AP_RangeFinder_LightWareI2C::update(void)
 
 void AP_RangeFinder_LightWareI2C::legacy_timer(void)
 {
-    if (legacy_get_reading(state.distance_m)) {
+    if (legacy_get_reading(state.distance_cm)) {
         // update range_valid state based on distance measured
         update_status();
     } else {
@@ -472,7 +472,7 @@ void AP_RangeFinder_LightWareI2C::legacy_timer(void)
 
 void AP_RangeFinder_LightWareI2C::sf20_timer(void)
 {
-    if (sf20_get_reading(state.distance_m)) {
+    if (sf20_get_reading(state.distance_cm)) {
         // update range_valid state based on distance measured
         update_status();
     } else {

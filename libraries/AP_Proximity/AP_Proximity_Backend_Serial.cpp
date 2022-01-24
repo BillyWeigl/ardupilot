@@ -39,7 +39,7 @@ AP_Proximity_Backend_Serial::AP_Proximity_Backend_Serial(AP_Proximity &_frontend
 // configured serial port
 bool AP_Proximity_Backend_Serial::detect()
 {
-    return AP::serialmanager().have_serial(AP_SerialManager::SerialProtocol_Lidar360, 0);
+    return AP::serialmanager().find_serial(AP_SerialManager::SerialProtocol_Lidar360, 0) != nullptr;
 }
 
 #endif // HAL_PROXIMITY_ENABLED

@@ -1,13 +1,6 @@
 #pragma once
 
-#include "AP_OpticalFlow.h"
-
-#ifndef AP_OPTICALFLOW_PX4FLOW_ENABLED
-#define AP_OPTICALFLOW_PX4FLOW_ENABLED AP_OPTICALFLOW_ENABLED
-#endif
-
-#if AP_OPTICALFLOW_PX4FLOW_ENABLED
-
+#include "OpticalFlow.h"
 #include <AP_HAL/utility/OwnPtr.h>
 
 class AP_OpticalFlow_PX4Flow : public OpticalFlow_backend
@@ -53,5 +46,3 @@ private:
 
     void timer(void);
 };
-
-#endif  // AP_OPTICALFLOW_PX4FLOW_ENABLED

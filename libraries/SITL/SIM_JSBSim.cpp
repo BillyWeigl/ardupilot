@@ -18,8 +18,6 @@
 
 #include "SIM_JSBSim.h"
 
-#if HAL_SIM_JSBSIM_ENABLED
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -484,5 +482,3 @@ void JSBSim::update(const struct sitl_input &input)
 }
 
 } // namespace SITL
-
-#endif  // HAL_SIM_JSBSIM_ENABLED

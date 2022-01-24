@@ -27,7 +27,6 @@
 #include <AP_Filesystem/AP_Filesystem_Available.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
-#include <AP_OpticalFlow/AP_OpticalFlow.h>
 
 #include "MissionItemProtocol_Waypoints.h"
 #include "MissionItemProtocol_Rally.h"
@@ -38,10 +37,6 @@
 
 #ifndef HAL_HIGH_LATENCY2_ENABLED
 #define HAL_HIGH_LATENCY2_ENABLED !HAL_MINIMIZE_FEATURES
-#endif
-
-#ifndef HAL_MAVLINK_INTERVALS_FROM_FILES_ENABLED
-#define HAL_MAVLINK_INTERVALS_FROM_FILES_ENABLED (HAVE_FILESYSTEM_SUPPORT && BOARD_FLASH_SIZE > 1024)
 #endif
 
 // macros used to determine if a message will fit in the space available.
@@ -100,37 +95,6 @@ public:
     // saveable rate of each stream
     AP_Int16        streamRates[GCS_MAVLINK_NUM_STREAM_RATES];
 };
-
-#if HAL_MAVLINK_INTERVALS_FROM_FILES_ENABLED
-class DefaultIntervalsFromFiles
-{
-
-public:
-
-    DefaultIntervalsFromFiles(uint16_t max_num);
-    ~DefaultIntervalsFromFiles();
-
-    void set(ap_message id, uint16_t interval);
-    uint16_t num_intervals() const {
-        return _num_intervals;
-    }
-    bool get_interval_for_ap_message_id(ap_message id, uint16_t &interval) const;
-    ap_message id_at(uint8_t ofs) const;
-    uint16_t interval_at(uint8_t ofs) const;
-
-private:
-
-    struct from_file_default_interval {
-        ap_message id;
-        uint16_t interval;
-    };
-
-    from_file_default_interval *_intervals;
-
-    uint16_t _num_intervals;
-    uint16_t _max_intervals;
-};
-#endif
 
 ///
 /// @class	GCS_MAVLINK
@@ -280,7 +244,7 @@ public:
     virtual void send_nav_controller_output() const = 0;
     virtual void send_pid_tuning() = 0;
     void send_ahrs2();
-    void send_system_time() const;
+    void send_system_time();
     void send_rc_channels() const;
     void send_rc_channels_raw() const;
     void send_raw_imu();
@@ -293,9 +257,7 @@ public:
     void send_sim_state() const;
     void send_ahrs();
     void send_battery2();
-#if AP_OPTICALFLOW_ENABLED
     void send_opticalflow();
-#endif
     virtual void send_attitude() const;
     virtual void send_attitude_quaternion() const;
     void send_autopilot_version() const;
@@ -319,12 +281,9 @@ public:
     void send_generator_status() const;
     virtual void send_winch_status() const {};
     void send_water_depth() const;
-    int8_t battery_remaining_pct(const uint8_t instance) const;
-
 #if HAL_HIGH_LATENCY2_ENABLED
-    void send_high_latency2() const;
+    void send_high_latency() const;
 #endif // HAL_HIGH_LATENCY2_ENABLED
-    void send_uavionix_adsb_out_status() const;
 
     // lock a channel, preventing use by MAVLink
     void lock(bool _lock) {
@@ -462,8 +421,6 @@ protected:
     void handle_obstacle_distance(const mavlink_message_t &msg);
     void handle_obstacle_distance_3d(const mavlink_message_t &msg);
 
-    void handle_adsb_message(const mavlink_message_t &msg);
-
     void handle_osd_param_config(const mavlink_message_t &msg) const;
 
     void handle_common_param_message(const mavlink_message_t &msg);
@@ -560,9 +517,7 @@ protected:
     MAV_RESULT handle_command_debug_trap(const mavlink_command_long_t &packet);
     MAV_RESULT handle_command_set_ekf_source_set(const mavlink_command_long_t &packet);
 
-#if AP_OPTICALFLOW_ENABLED
     void handle_optical_flow(const mavlink_message_t &msg);
-#endif
 
     MAV_RESULT handle_fixed_mag_cal_yaw(const mavlink_command_long_t &packet);
 
@@ -593,7 +548,7 @@ protected:
     virtual uint8_t high_latency_tgt_airspeed() const { return 0; }
     virtual uint8_t high_latency_wind_speed() const { return 0; }
     virtual uint8_t high_latency_wind_direction() const { return 0; }
-    int8_t high_latency_air_temperature() const;
+    virtual int8_t high_latency_air_temperature() const { return 0; }
 #endif // HAL_HIGH_LATENCY2_ENABLED
 
     static constexpr const float magic_force_arm_value = 2989.0f;
@@ -608,8 +563,6 @@ protected:
       since boot in milliseconds
      */
     uint32_t correct_offboard_timestamp_usec_to_ms(uint64_t offboard_usec, uint16_t payload_size);
-
-    static void convert_COMMAND_LONG_to_COMMAND_INT(const mavlink_command_long_t &in, mavlink_command_int_t &out);
 
 private:
 
@@ -631,6 +584,7 @@ private:
     MAV_RESULT handle_servorelay_message(const mavlink_command_long_t &packet);
 
     static bool command_long_stores_location(const MAV_CMD command);
+    static void convert_COMMAND_LONG_to_COMMAND_INT(const mavlink_command_long_t &in, mavlink_command_int_t &out);
 
     bool calibrate_gyros();
 
@@ -726,13 +680,6 @@ private:
     // boolean that indicated that message intervals have been set
     // from streamrates:
     bool deferred_messages_initialised;
-#if HAL_MAVLINK_INTERVALS_FROM_FILES_ENABLED
-    // read configuration files from (e.g.) SD and ROMFS, set
-    // intervals from same
-    void initialise_message_intervals_from_config_files();
-    // read file, set message intervals from it:
-    void get_intervals_from_filepath(const char *path, DefaultIntervalsFromFiles &);
-#endif
     // return interval deferred message bucket should be sent after.
     // When sending parameters and waypoints this may be longer than
     // the interval specified in "deferred"
@@ -869,7 +816,6 @@ private:
     void handle_vision_position_estimate(const mavlink_message_t &msg);
     void handle_global_vision_position_estimate(const mavlink_message_t &msg);
     void handle_att_pos_mocap(const mavlink_message_t &msg);
-    void handle_odometry(const mavlink_message_t &msg);
     void handle_common_vision_position_estimate_data(const uint64_t usec,
                                                      const float x,
                                                      const float y,
@@ -895,12 +841,6 @@ private:
     void load_signing_key(void);
     bool signing_enabled(void) const;
     static void save_signing_timestamp(bool force_save_now);
-
-#if HAL_MAVLINK_INTERVALS_FROM_FILES_ENABLED
-    // structure containing default intervals read from files for this
-    // link:
-    DefaultIntervalsFromFiles *default_intervals_from_files;
-#endif
 
     // alternative protocol handler support
     struct {
@@ -1056,9 +996,6 @@ public:
 #if !HAL_MINIMIZE_FEATURES
     // LTM backend
     AP_LTM_Telem ltm_telemetry;
-#endif
-
-#if AP_DEVO_TELEM_ENABLED
     // Devo backend
     AP_DEVO_Telem devo_telemetry;
 #endif

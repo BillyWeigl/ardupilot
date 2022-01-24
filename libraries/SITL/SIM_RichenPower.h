@@ -46,6 +46,8 @@ arm throttle (denied because generator not running)
 
 #include "SIM_SerialDevice.h"
 
+#include <stdio.h>
+
 namespace SITL {
 
 class RichenPower : public SerialDevice {
@@ -85,7 +87,10 @@ private:
         STOPPING = 24, // idle cool-down period
     };
     State _state = State::STOP;
-    void set_run_state(State newstate);
+    void set_run_state(State newstate) {
+        ::fprintf(stderr, "Moving to state %u from %u\n", (unsigned)newstate, (unsigned)_state);
+        _state = newstate;
+    }
 
     AP_Int8  _enabled;  // enable richenpower sim
     AP_Int8  _ctrl_pin;

@@ -344,12 +344,12 @@ void NavEKF3_core::setAidingMode()
                 posTimeout = true;
                 velTimeout = true;
                 tasTimeout = true;
-                gpsIsInUse = false;
+                gpsNotAvailable = true;
              } else if (posAidLossCritical) {
                 // if the loss of position is critical, declare all sources of position aiding as being timed out
                 posTimeout = true;
                 velTimeout = !optFlowUsed && !gpsVelUsed && !bodyOdmUsed;
-                gpsIsInUse = false;
+                gpsNotAvailable = true;
 
             }
             break;

@@ -70,10 +70,6 @@
 
 #define MAX_CONNECTED_MAGS (COMPASS_MAX_UNREG_DEV+COMPASS_MAX_INSTANCES)
 
-#ifndef AP_SIM_COMPASS_ENABLED
-#define AP_SIM_COMPASS_ENABLED (CONFIG_HAL_BOARD == HAL_BOARD_SITL)
-#endif
-
 #include "CompassCalibrator.h"
 
 class CompassLearn;
@@ -340,8 +336,7 @@ public:
       fast compass calibration given vehicle position and yaw
      */
     MAV_RESULT mag_cal_fixed_yaw(float yaw_deg, uint8_t compass_mask,
-                                 float lat_deg, float lon_deg,
-                                 bool force_use=false);
+                                 float lat_deg, float lon_deg);
 
 #if HAL_MSP_COMPASS_ENABLED
     void handle_msp(const MSP::msp_compass_data_message_t &pkt);

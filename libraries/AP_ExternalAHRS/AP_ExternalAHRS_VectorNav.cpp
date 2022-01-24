@@ -29,7 +29,6 @@
 #include <AP_Logger/AP_Logger.h>
 #include <AP_Common/NMEA.h>
 #include <stdio.h>
-#include <AP_BoardConfig/AP_BoardConfig.h>
 
 #if HAL_EXTERNAL_AHRS_ENABLED
 
@@ -121,7 +120,7 @@ AP_ExternalAHRS_VectorNav::AP_ExternalAHRS_VectorNav(AP_ExternalAHRS *_frontend,
     last_pkt2 = new VN_packet2;
 
     if (!pktbuf || !last_pkt1 || !last_pkt2) {
-        AP_BoardConfig::allocation_error("ExternalAHRS");
+        AP_HAL::panic("Failed to allocate ExternalAHRS");
     }
 
     if (!hal.scheduler->thread_create(FUNCTOR_BIND_MEMBER(&AP_ExternalAHRS_VectorNav::update_thread, void), "AHRS", 2048, AP_HAL::Scheduler::PRIORITY_SPI, 0)) {

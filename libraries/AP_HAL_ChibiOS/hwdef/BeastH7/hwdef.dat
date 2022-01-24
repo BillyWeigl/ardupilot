@@ -108,10 +108,10 @@ DMA_NOSHARE SPI1* SPI3* TIM1* TIM3* TIM4_UP USART1_TX
 define HAL_STORAGE_SIZE 16384
 # use last 2 pages for flash storage
 # H743 has 16 pages of 128k each
-STORAGE_FLASH_PAGE 14
+define STORAGE_FLASH_PAGE 14
 
 # enable logging to dataflash
-define HAL_LOGGING_DATAFLASH_ENABLED 1
+define HAL_LOGGING_DATAFLASH
 
 # spi devices
 SPIDEV mpu6000   SPI1 DEVID1 MPU6000_CS MODE3  1*MHZ  4*MHZ

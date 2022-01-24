@@ -46,7 +46,6 @@ public:
 
     void _timer_tick(void) override;
     bool healthy(void) override;
-    bool get_storage_ptr(void *&ptr, size_t &size) override;
 
 private:
     enum class StorageBackend: uint8_t {

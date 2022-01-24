@@ -20,13 +20,8 @@ struct range {
 class AP_RangeFinder_BBB_PRU : public AP_RangeFinder_Backend
 {
 public:
-    /*
-        Constructor:
-        The constructor also initialises the rangefinder. Note that this
-        constructor is not called until detect() returns true, so we
-        already know that we should setup the rangefinder
-    */
-    using AP_RangeFinder_Backend::AP_RangeFinder_Backend;
+    // constructor
+    AP_RangeFinder_BBB_PRU(RangeFinder::RangeFinder_State &_state, AP_RangeFinder_Params &_params);
 
     // static detection function
     static bool detect();

@@ -195,16 +195,6 @@ void GCS_MAVLINK_Copter::send_nav_controller_output() const
 
 float GCS_MAVLINK_Copter::vfr_hud_airspeed() const
 {
-#if AP_AIRSPEED_ENABLED
-    // airspeed sensors are best. While the AHRS airspeed_estimate
-    // will use an airspeed sensor, that value is constrained by the
-    // ground speed. When reporting we should send the true airspeed
-    // value if possible:
-    if (copter.airspeed.enabled() && copter.airspeed.healthy()) {
-        return copter.airspeed.get_airspeed();
-    }
-#endif
-    
     Vector3f airspeed_vec_bf;
     if (AP::ahrs().airspeed_vector_true(airspeed_vec_bf)) {
         // we are running the EKF3 wind estimation code which can give
@@ -705,11 +695,6 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_int_packet(const mavlink_command_i
 
     case MAV_CMD_DO_REPOSITION:
         return handle_command_int_do_reposition(packet);
-
-    // pause or resume an auto mission
-    case MAV_CMD_DO_PAUSE_CONTINUE:
-        return handle_command_pause_continue(packet);
-
     default:
         return GCS_MAVLINK::handle_command_int_packet(packet);
     }
@@ -978,41 +963,9 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_long_packet(const mavlink_command_
         return MAV_RESULT_ACCEPTED;
     }
 
-    // pause or resume an auto mission
-    case MAV_CMD_DO_PAUSE_CONTINUE: {
-        mavlink_command_int_t packet_int;
-        GCS_MAVLINK_Copter::convert_COMMAND_LONG_to_COMMAND_INT(packet, packet_int);
-        return handle_command_pause_continue(packet_int);
-    }
     default:
         return GCS_MAVLINK::handle_command_long_packet(packet);
     }
-}
-
-MAV_RESULT GCS_MAVLINK_Copter::handle_command_pause_continue(const mavlink_command_int_t &packet)
-{
-    if (copter.flightmode->mode_number() != Mode::Number::AUTO) {
-        // only supported in AUTO mode
-        return MAV_RESULT_FAILED;
-    }
-
-    // requested pause from GCS
-    if ((int8_t) packet.param1 == 0) {
-        copter.mode_auto.mission.stop();
-        copter.mode_auto.loiter_start();
-        gcs().send_text(MAV_SEVERITY_INFO, "Paused mission");
-        return MAV_RESULT_ACCEPTED;
-    }
-
-    // requested resume from GCS
-    if ((int8_t) packet.param1 == 1) {
-        copter.mode_auto.mission.resume();
-        gcs().send_text(MAV_SEVERITY_INFO, "Resumed mission");
-        return MAV_RESULT_ACCEPTED;
-    }
-
-    // fail pause or continue
-    return MAV_RESULT_FAILED;
 }
 
 void GCS_MAVLINK_Copter::handle_mount_message(const mavlink_message_t &msg)
@@ -1056,8 +1009,6 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         POSITION_TARGET_TYPEMASK_YAW_IGNORE;
     constexpr uint32_t MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE =
         POSITION_TARGET_TYPEMASK_YAW_RATE_IGNORE;
-    constexpr uint32_t MAVLINK_SET_POS_TYPE_MASK_FORCE_SET =
-        POSITION_TARGET_TYPEMASK_FORCE_SET;
 
     switch (msg.msgid) {
 
@@ -1103,30 +1054,9 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
             break;
         }
 
-        const bool roll_rate_ignore   = packet.type_mask & ATTITUDE_TARGET_TYPEMASK_BODY_ROLL_RATE_IGNORE;
-        const bool pitch_rate_ignore  = packet.type_mask & ATTITUDE_TARGET_TYPEMASK_BODY_PITCH_RATE_IGNORE;
-        const bool yaw_rate_ignore    = packet.type_mask & ATTITUDE_TARGET_TYPEMASK_BODY_YAW_RATE_IGNORE;
-        const bool throttle_ignore    = packet.type_mask & ATTITUDE_TARGET_TYPEMASK_THROTTLE_IGNORE;
-        const bool attitude_ignore    = packet.type_mask & ATTITUDE_TARGET_TYPEMASK_ATTITUDE_IGNORE;
-
-        // ensure thrust field is not ignored
-        if (throttle_ignore) {
+        // ensure type_mask specifies to use attitude and thrust
+        if ((packet.type_mask & ((1<<7)|(1<<6))) != 0) {
             break;
-        }
-
-        Quaternion attitude_quat;
-        if (attitude_ignore) {
-            attitude_quat.zero();
-        } else {
-            attitude_quat = Quaternion(packet.q[0],packet.q[1],packet.q[2],packet.q[3]);
-
-            // Do not accept the attitude_quaternion
-            // if its magnitude is not close to unit length +/- 1E-3
-            // this limit is somewhat greater than sqrt(FLT_EPSL)
-            if (!attitude_quat.is_unit_length()) {
-                // The attitude quaternion is ill-defined
-                break;
-            }
         }
 
         // check if the message's thrust field should be interpreted as a climb rate or as thrust
@@ -1150,19 +1080,15 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
             }
         }
 
-        Vector3f ang_vel;
-        if (!roll_rate_ignore) {
-            ang_vel.x = packet.body_roll_rate;
-        }
-        if (!pitch_rate_ignore) {
-            ang_vel.y = packet.body_pitch_rate;
-        }
-        if (!yaw_rate_ignore) {
-            ang_vel.z = packet.body_yaw_rate;
+        // if the body_yaw_rate field is ignored, use the commanded yaw position
+        // otherwise use the commanded yaw rate
+        bool use_yaw_rate = false;
+        if ((packet.type_mask & (1<<2)) == 0) {
+            use_yaw_rate = true;
         }
 
-        copter.mode_guided.set_angle(attitude_quat, ang_vel,
-                climb_rate_or_thrust, use_thrust);
+        copter.mode_guided.set_angle(Quaternion(packet.q[0],packet.q[1],packet.q[2],packet.q[3]),
+                climb_rate_or_thrust, use_yaw_rate, packet.body_yaw_rate, use_thrust);
 
         break;
     }
@@ -1193,13 +1119,6 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         bool acc_ignore      = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE;
         bool yaw_ignore      = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE;
         bool yaw_rate_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE;
-        bool force_set       = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_FORCE_SET;
-
-        // Force inputs are not supported
-        // Do not accept command if force_set is true and acc_ignore is false
-        if (force_set && !acc_ignore) {
-            break;
-        }
 
         // prepare position
         Vector3f pos_vector;
@@ -1215,7 +1134,7 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
             if (packet.coordinate_frame == MAV_FRAME_LOCAL_OFFSET_NED ||
                 packet.coordinate_frame == MAV_FRAME_BODY_NED ||
                 packet.coordinate_frame == MAV_FRAME_BODY_OFFSET_NED) {
-                pos_vector += copter.inertial_nav.get_position_neu_cm();
+                pos_vector += copter.inertial_nav.get_position();
             }
         }
 
@@ -1288,13 +1207,6 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         bool acc_ignore      = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE;
         bool yaw_ignore      = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE;
         bool yaw_rate_ignore = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE;
-        bool force_set       = packet.type_mask & MAVLINK_SET_POS_TYPE_MASK_FORCE_SET;
-
-        // Force inputs are not supported
-        // Do not accept command if force_set is true and acc_ignore is false
-        if (force_set && !acc_ignore) {
-            break;
-        }
 
         // extract location from message
         Location loc;
@@ -1403,6 +1315,15 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         }
         break;
     }
+
+    case MAVLINK_MSG_ID_ADSB_VEHICLE:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_OUT_CFG:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_OUT_DYNAMIC:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_TRANSCEIVER_HEALTH_REPORT:
+#if HAL_ADSB_ENABLED
+        copter.adsb.handle_message(chan, msg);
+#endif
+        break;
 
 #if TOY_MODE_ENABLED == ENABLED
     case MAVLINK_MSG_ID_NAMED_VALUE_INT:

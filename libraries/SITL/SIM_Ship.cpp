@@ -17,16 +17,12 @@
 */
 
 #include "SIM_Ship.h"
-
-#if AP_SIM_SHIP_ENABLED
-
 #include "SITL.h"
 
 #include <stdio.h>
 
 #include "SIM_Aircraft.h"
 #include <AP_HAL_SITL/SITL_State.h>
-#include <AP_Terrain/AP_Terrain.h>
 
 // use a spare channel for send. This is static to avoid mavlink
 // header import in SIM_Ship.h
@@ -209,5 +205,3 @@ void ShipSim::send_report(void)
         mav_socket.send(buf, len);
     }
 }
-
-#endif

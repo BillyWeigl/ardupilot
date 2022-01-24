@@ -27,7 +27,6 @@
 #include <AP_NavEKF/AP_NavEKF_Source.h>
 
 class NavEKF3_core;
-class EKFGSF_yaw;
 
 class NavEKF3 {
     friend class NavEKF3_core;
@@ -358,9 +357,6 @@ public:
     // returns true when the state estimates for the selected core are significantly degraded by vibration
     // if instance < 0, the primary instance will be used
     bool isVibrationAffected(int8_t instance) const;
-
-    // get a yaw estimator instance
-    const EKFGSF_yaw *get_yawEstimator(void) const;
 
 private:
     uint8_t num_cores; // number of allocated cores

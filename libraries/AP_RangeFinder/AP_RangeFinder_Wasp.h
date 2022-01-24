@@ -46,7 +46,7 @@ private:
 
     wasp_configuration_stage configuration_state = WASP_CFG_PROTOCOL;
 
-    bool get_reading(float &reading_m) override;
+    bool get_reading(uint16_t &reading_cm) override;
 
     void parse_response(void);
 

@@ -25,12 +25,6 @@
 #include "AP_GPS.h"
 #include "GPS_Backend.h"
 
-#ifndef AP_GPS_SIRF_ENABLED
-  #define AP_GPS_SIRF_ENABLED 1
-#endif
-
-#if AP_GPS_SIRF_ENABLED
-
 #define SIRF_SET_BINARY "$PSRF100,0,38400,8,1,0*3C\r\n"
 
 class AP_GPS_SIRF : public AP_GPS_Backend {
@@ -113,4 +107,3 @@ private:
 
     static const uint8_t _initialisation_blob[];
 };
-#endif

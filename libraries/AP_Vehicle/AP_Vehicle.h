@@ -25,7 +25,6 @@
 #include <AP_BoardConfig/AP_BoardConfig.h>     // board configuration library
 #include <AP_CANManager/AP_CANManager.h>
 #include <AP_Button/AP_Button.h>
-#include <AP_EFI/AP_EFI.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_Generator/AP_Generator.h>
 #include <AP_Logger/AP_Logger.h>
@@ -47,9 +46,6 @@
 #include <AP_Frsky_Telem/AP_Frsky_Parameters.h>
 #include <AP_ExternalAHRS/AP_ExternalAHRS.h>
 #include <AP_VideoTX/AP_SmartAudio.h>
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-#include <SITL/SITL.h>
-#endif
 
 class AP_Vehicle : public AP_HAL::HAL::Callbacks {
 
@@ -188,7 +184,7 @@ public:
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const;
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     /*
       methods to control vehicle for use by scripting
     */
@@ -201,10 +197,6 @@ public:
     virtual bool set_target_velaccel_NED(const Vector3f& target_vel, const Vector3f& target_accel, bool use_yaw, float yaw_deg, bool use_yaw_rate, float yaw_rate_degs, bool yaw_relative) { return false; }
     virtual bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) { return false; }
 
-    // command throttle percentage and roll, pitch, yaw target
-    // rates. For use with scripting controllers
-    virtual bool set_target_throttle_rate_rpy(float throttle_pct, float roll_rate_dps, float pitch_rate_dps, float yaw_rate_dps) { return false; }
-
     // get target location (for use by scripting)
     virtual bool get_target_location(Location& target_loc) { return false; }
 
@@ -214,10 +206,7 @@ public:
 
     // set steering and throttle (-1 to +1) (for use by scripting with Rover)
     virtual bool set_steering_and_throttle(float steering, float throttle) { return false; }
-
-    // support for NAV_SCRIPT_TIME mission command
-    virtual bool nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2) { return false; }
-    virtual void nav_script_time_done(uint16_t id) {}
+#endif // ENABLE_SCRIPTING
 
 
     // control outputs enumeration
@@ -237,8 +226,8 @@ public:
     // returns true on success and control_value is set to a value in the range -1 to +1
     virtual bool get_control_output(AP_Vehicle::ControlOutput control_output, float &control_value) { return false; }
 
-#endif // AP_SCRIPTING_ENABLED
-
+    // write out harmonic notch log messages
+    void write_notch_log_messages() const;
     // update the harmonic notch
     virtual void update_dynamic_notch() {};
 
@@ -350,7 +339,7 @@ protected:
     AP_MSP msp;
 #endif
 
-#if HAL_GENERATOR_ENABLED
+#if GENERATOR_ENABLED
     AP_Generator generator;
 #endif
 
@@ -360,15 +349,6 @@ protected:
     
 #if HAL_SMARTAUDIO_ENABLED
     AP_SmartAudio smartaudio;
-#endif
-
-#if HAL_EFI_ENABLED
-    // EFI Engine Monitor
-    AP_EFI efi;
-#endif
-
-#if AP_AIRSPEED_ENABLED
-    AP_Airspeed airspeed;
 #endif
 
     static const struct AP_Param::GroupInfo var_info[];
@@ -382,10 +362,6 @@ protected:
     void accel_cal_update();
 
     ModeReason control_mode_reason = ModeReason::UNKNOWN;
-
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    SITL::SIM sitl;
-#endif
 
 private:
 

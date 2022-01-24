@@ -327,9 +327,6 @@ public:
 
     void Log_Write(uint64_t time_us);
 
-    // get a yaw estimator instance
-    const EKFGSF_yaw *get_yawEstimator(void) const { return yawEstimator; }
-    
 private:
     EKFGSF_yaw *yawEstimator;
     AP_DAL &dal;
@@ -1177,9 +1174,6 @@ private:
     uint32_t EKFGSF_yaw_reset_request_ms;   // timestamp of last emergency yaw reset request (uSec)
     uint8_t EKFGSF_yaw_reset_count;         // number of emergency yaw resets performed
     bool EKFGSF_run_filterbank;             // true when the filter bank is active
-
-    // logging timestamps
-    uint32_t lastTimingLogTime_ms;
 
     // logging functions shared by cores:
     void Log_Write_NKF1(uint64_t time_us) const;

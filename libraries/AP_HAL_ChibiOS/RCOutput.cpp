@@ -1382,12 +1382,12 @@ void RCOutput::dshot_send(pwm_group &group, uint32_t time_out_us)
             }
 
             pwm = constrain_int16(pwm, 1000, 2000);
-            uint16_t value = MIN(2 * (pwm - 1000), 1999);
+            uint16_t value = 2 * (pwm - 1000);
 
             if (chan_mask & (_reversible_mask>>chan_offset)) {
                 // this is a DShot-3D output, map so that 1500 PWM is zero throttle reversed
                 if (value < 1000) {
-                    value = 1999 - value;
+                    value = 2000 - value;
                 } else if (value > 1000) {
                     value = value - 1000;
                 } else {
@@ -1727,7 +1727,7 @@ bool RCOutput::serial_write_bytes(const uint8_t *bytes, uint16_t len)
  */
 void RCOutput::serial_bit_irq(void)
 {
-    uint16_t now = AP_HAL::micros16();
+    uint32_t now = AP_HAL::micros();
     uint8_t bit = palReadLine(irq.line);
     bool send_signal = false;
 
@@ -1746,7 +1746,7 @@ void RCOutput::serial_bit_irq(void)
             irq.bitmask = 0;
         }
     } else {
-        uint16_t dt = now - irq.byte_start_tick;
+        systime_t dt = now - irq.byte_start_tick;
         uint8_t bitnum = (dt+(irq.bit_time_tick/2)) / irq.bit_time_tick;
 
         if (bitnum > 10) {
@@ -1828,12 +1828,7 @@ uint16_t RCOutput::serial_read_bytes(uint8_t *buf, uint16_t len)
     pwm_group &group = *serial_group;
     const ioline_t line = group.pal_lines[group.serial.chan];
     // keep speed low to avoid noise when switching between input and output
-#ifndef PAL_STM32_OSPEED_LOWEST
-    // for GPIOv3
-    uint32_t gpio_mode = PAL_STM32_MODE_INPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_PUPDR_PULLUP | PAL_STM32_OSPEED_LOW;
-#else
     uint32_t gpio_mode = PAL_STM32_MODE_INPUT | PAL_STM32_OTYPE_PUSHPULL | PAL_STM32_PUPDR_PULLUP | PAL_STM32_OSPEED_LOWEST;
-#endif
     // restore the line to what it was before
     iomode_t restore_mode = palReadLineMode(line);
     uint16_t i = 0;
@@ -2020,6 +2015,22 @@ void RCOutput::set_failsafe_pwm(uint32_t chmask, uint16_t period_us)
         iomcu.set_failsafe_pwm(chmask, period_us);
     }
 #endif
+}
+
+/*
+  true when the output mode is of type dshot
+*/
+bool RCOutput::is_dshot_protocol(const enum output_mode mode)
+{
+    switch (mode) {
+    case MODE_PWM_DSHOT150:
+    case MODE_PWM_DSHOT300:
+    case MODE_PWM_DSHOT600:
+    case MODE_PWM_DSHOT1200:
+        return true;
+    default:
+        return false;
+    }
 }
 
 /*

@@ -20,8 +20,8 @@
 
 #include <AP_HAL/AP_HAL.h>
 
-#ifndef AP_FETTEC_ONEWIRE_ENABLED
-#define AP_FETTEC_ONEWIRE_ENABLED !HAL_MINIMIZE_FEATURES && BOARD_FLASH_SIZE > 1024
+#ifndef HAL_AP_FETTEC_ONEWIRE_ENABLED
+#define HAL_AP_FETTEC_ONEWIRE_ENABLED !HAL_MINIMIZE_FEATURES && !defined(HAL_BUILD_AP_PERIPH) && BOARD_FLASH_SIZE > 1024
 #endif
 
 // Support both full-duplex at 500Kbit/s as well as half-duplex at 2Mbit/s (optional feature)
@@ -44,7 +44,7 @@
 #define HAL_AP_FETTEC_ESC_LIGHT 0
 #endif
 
-#if AP_FETTEC_ONEWIRE_ENABLED
+#if HAL_AP_FETTEC_ONEWIRE_ENABLED
 
 #define FTW_DEBUGGING 0
 #if FTW_DEBUGGING
@@ -501,4 +501,4 @@ private:
     /// returns true if the first message in the buffer is OK
     bool buffer_contains_ok(const uint8_t length);
 };
-#endif // AP_FETTEC_ONEWIRE_ENABLED
+#endif // HAL_AP_FETTEC_ONEWIRE_ENABLED

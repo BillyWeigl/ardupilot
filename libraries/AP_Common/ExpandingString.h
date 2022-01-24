@@ -39,9 +39,6 @@ public:
     // append data to the string. s can be null for zero fill
     bool append(const char *s, uint32_t len);
 
-    // set address to custom external buffer
-    void set_buffer(char *s, uint32_t total_len, uint32_t used_len);
-
     // destructor
     ~ExpandingString();
 
@@ -54,7 +51,6 @@ private:
     uint32_t buflen;
     uint32_t used;
     bool allocation_failed;
-    bool external_buffer;
 
     // try to expand the buffer
     bool expand(uint32_t min_needed) WARN_IF_UNUSED;

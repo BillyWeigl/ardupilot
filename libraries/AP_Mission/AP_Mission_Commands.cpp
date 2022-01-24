@@ -190,7 +190,7 @@ bool AP_Mission::start_command_do_sprayer(const AP_Mission::Mission_Command& cmd
 
 bool AP_Mission::start_command_do_scripting(const AP_Mission::Mission_Command& cmd)
 {
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     AP_Scripting *scripting = AP_Scripting::get_singleton();
     if (scripting == nullptr) {
         return false;
@@ -201,5 +201,5 @@ bool AP_Mission::start_command_do_scripting(const AP_Mission::Mission_Command& c
     return true;
 #else
     return false;
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
 }

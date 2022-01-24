@@ -18,14 +18,6 @@
 
 #pragma once
 
-#include <AP_HAL/AP_HAL_Boards.h>
-
-#ifndef HAL_SIM_SCRIMMAGE_ENABLED
-#define HAL_SIM_SCRIMMAGE_ENABLED (CONFIG_HAL_BOARD == HAL_BOARD_SITL)
-#endif
-
-#if HAL_SIM_SCRIMMAGE_ENABLED
-
 #include <string>
 
 #include <AP_HAL/utility/Socket.h>
@@ -91,5 +83,3 @@ private:
 };
 
 } // namespace SITL
-
-#endif  // HAL_SIM_SCRIMMAGE_ENABLED

@@ -198,7 +198,7 @@ bool RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const AuxSwi
             if (ch_flag == RC_Channel::AuxSwitchPos::HIGH) {
 
                 // do not allow saving new waypoints while we're in auto or disarmed
-                if (copter.flightmode == &copter.mode_auto || !copter.motors->armed()) {
+                if (copter.flightmode->mode_number() == Mode::Number::AUTO || copter.flightmode->mode_number() == Mode::Number::AUTO_RTL || !copter.motors->armed()) {
                     break;
                 }
 
@@ -350,9 +350,9 @@ bool RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const AuxSwi
 
         case AUX_FUNC::MOTOR_INTERLOCK:
 #if FRAME_CONFIG == HELI_FRAME
-            // The interlock logic for ROTOR_CONTROL_MODE_PASSTHROUGH is handled 
+            // The interlock logic for ROTOR_CONTROL_MODE_SPEED_PASSTHROUGH is handled 
             // in heli_update_rotor_speed_targets.  Otherwise turn on when above low.
-            if (copter.motors->get_rsc_mode() != ROTOR_CONTROL_MODE_PASSTHROUGH) {
+            if (copter.motors->get_rsc_mode() != ROTOR_CONTROL_MODE_SPEED_PASSTHROUGH) {
                 copter.ap.motor_interlock_switch = (ch_flag == AuxSwitchPos::HIGH || ch_flag == AuxSwitchPos::MIDDLE);
             }
 #else
@@ -496,7 +496,7 @@ bool RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const AuxSwi
             break;
 
         case AUX_FUNC::FLOWHOLD:
-#if AP_OPTICALFLOW_ENABLED
+#if OPTFLOW == ENABLED
             do_aux_function_change_mode(Mode::Number::FLOWHOLD, ch_flag);
 #endif
             break;

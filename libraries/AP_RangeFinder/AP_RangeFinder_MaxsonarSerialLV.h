@@ -8,7 +8,7 @@ class AP_RangeFinder_MaxsonarSerialLV : public AP_RangeFinder_Backend_Serial
 
 public:
 
-    AP_RangeFinder_MaxsonarSerialLV(RangeFinder::RangeFinder_State &_state, AP_RangeFinder_Params &_params);
+    using AP_RangeFinder_Backend_Serial::AP_RangeFinder_Backend_Serial;
 
 protected:
 
@@ -18,7 +18,7 @@ protected:
 
 private:
     // get a reading
-    bool get_reading(float &reading_m) override;
+    bool get_reading(uint16_t &reading_cm) override;
 
     uint16_t read_timeout_ms() const override { return 500; }
 

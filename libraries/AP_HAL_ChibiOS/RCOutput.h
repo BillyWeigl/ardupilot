@@ -26,7 +26,7 @@
 
 #if HAL_USE_PWM == TRUE
 
-#if !STM32_DMA_ADVANCED && !defined(STM32G4) && !defined(STM32L4)
+#if !STM32_DMA_ADVANCED && !defined(STM32G4)
 #define DISABLE_DSHOT
 #endif
 
@@ -332,7 +332,7 @@ private:
         // serial output
         struct {
             // expected time per bit
-            uint16_t bit_time_us;
+            uint32_t bit_time_us;
 
             // channel to output to within group (0 to 3)
             uint8_t chan;
@@ -411,7 +411,7 @@ private:
         ioline_t line;
 
         // time the current byte started
-        uint16_t byte_start_tick;
+        uint32_t byte_start_tick;
 
         // number of bits we have read in this byte
         uint8_t nbits;
@@ -423,7 +423,7 @@ private:
         uint16_t byteval;
 
         // expected time per bit in micros
-        uint16_t bit_time_tick;
+        uint32_t bit_time_tick;
 
         // the bit value of the last bit received
         uint8_t last_bit;
@@ -600,6 +600,7 @@ private:
     const uint16_t buffer_length, bool choose_high, uint32_t pulse_time_us);
     void send_pulses_DMAR(pwm_group &group, uint32_t buffer_length);
     void set_group_mode(pwm_group &group);
+    static bool is_dshot_protocol(const enum output_mode mode);
     static uint32_t protocol_bitrate(const enum output_mode mode);
     void print_group_setup_error(pwm_group &group, const char* error_string);
 

@@ -21,7 +21,7 @@
 extern const AP_HAL::HAL& hal;
 
 // read - return last value measured by sensor
-bool AP_RangeFinder_LeddarOne::get_reading(float &reading_m)
+bool AP_RangeFinder_LeddarOne::get_reading(uint16_t &reading_cm)
 {
     uint8_t number_detections;
     LeddarOne_Status leddarone_status;
@@ -70,7 +70,7 @@ bool AP_RangeFinder_LeddarOne::get_reading(float &reading_m)
         leddarone_status = parse_response(number_detections);
 
         if (leddarone_status == LEDDARONE_STATE_OK) {
-            reading_m = (sum_distance * 0.01f) / number_detections;
+            reading_cm = sum_distance / number_detections;
 
             // reset mod_bus status to read new buffer
             modbus_status = LEDDARONE_MODBUS_STATE_INIT;

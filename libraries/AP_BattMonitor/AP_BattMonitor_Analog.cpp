@@ -43,15 +43,6 @@ const AP_Param::GroupInfo AP_BattMonitor_Analog::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("AMP_OFFSET", 5, AP_BattMonitor_Analog, _curr_amp_offset, AP_BATT_CURR_AMP_OFFSET_DEFAULT),
 
-    // @Param: VLT_OFFSET
-    // @DisplayName: Volage offset
-    // @Description: Voltage offset on voltage pin. This allows for an offset due to a diode. This voltage is subtracted before the scaling is applied
-    // @Units: V
-    // @User: Advanced
-    AP_GROUPINFO("VLT_OFFSET", 6, AP_BattMonitor_Analog, _volt_offset, 0),
-    
-    // Param indexes must be less than 10 to avoid conflict with other battery monitor param tables loaded by pointer
-
     AP_GROUPEND
 };
 
@@ -67,6 +58,8 @@ AP_BattMonitor_Analog::AP_BattMonitor_Analog(AP_BattMonitor &mon,
     _volt_pin_analog_source = hal.analogin->channel(_volt_pin);
     _curr_pin_analog_source = hal.analogin->channel(_curr_pin);
 
+    // always healthy
+    _state.healthy = true;
 }
 
 // read - read the voltage and current
@@ -74,10 +67,10 @@ void
 AP_BattMonitor_Analog::read()
 {
     // this copes with changing the pin at runtime
-    _state.healthy = _volt_pin_analog_source->set_pin(_volt_pin);
+    _volt_pin_analog_source->set_pin(_volt_pin);
 
     // get voltage
-    _state.voltage = (_volt_pin_analog_source->voltage_average() - _volt_offset) * _volt_multiplier;
+    _state.voltage = _volt_pin_analog_source->voltage_average() * _volt_multiplier;
 
     // read current
     if (has_current()) {
@@ -86,14 +79,15 @@ AP_BattMonitor_Analog::read()
         float dt = tnow - _state.last_time_micros;
 
         // this copes with changing the pin at runtime
-        _state.healthy &= _curr_pin_analog_source->set_pin(_curr_pin);
+        _curr_pin_analog_source->set_pin(_curr_pin);
 
         // read current
         _state.current_amps = (_curr_pin_analog_source->voltage_average() - _curr_amp_offset) * _curr_amp_per_volt;
 
         // update total current drawn since startup
         if (_state.last_time_micros != 0 && dt < 2000000.0f) {
-            float mah = calculate_mah(_state.current_amps, dt);
+            // .0002778 is 1/3600 (conversion to hours)
+            float mah = _state.current_amps * dt * 0.0000002778f;
             _state.consumed_mah += mah;
             _state.consumed_wh  += 0.001f * mah * _state.voltage;
         }
