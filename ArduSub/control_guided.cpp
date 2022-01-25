@@ -4,6 +4,10 @@
  * Init and run calls for guided flight mode
  */
 
+#ifndef GUIDED_LOOK_AT_TARGET_MIN_DISTANCE_CM
+# define GUIDED_LOOK_AT_TARGET_MIN_DISTANCE_CM     500     // point nose at target if it is more than 5m away
+#endif
+
 #define GUIDED_POSVEL_TIMEOUT_MS    3000    // guided mode's position-velocity controller times out after 3seconds with no new updates
 #define GUIDED_ATTITUDE_TIMEOUT_MS  1000    // guided mode's attitude controller times out after 1 second with no new updates
 
@@ -282,7 +286,9 @@ void Sub::guided_pos_control_run()
         // Sub vehicles do not stabilize roll/pitch/yaw when disarmed
         attitude_control.set_throttle_out(0,true,g.throttle_filt);
         attitude_control.relax_attitude_controllers();
-        wp_nav.wp_and_spline_init();
+        // initialise velocity controller
+        pos_control.init_z_controller();
+        pos_control.init_xy_controller();
         return;
     }
 
@@ -524,7 +530,7 @@ void Sub::guided_limit_init_time_and_pos()
     guided_limit.start_time = AP_HAL::millis();
 
     // initialise start position from current position
-    guided_limit.start_pos = inertial_nav.get_position_neu_cm();
+    guided_limit.start_pos = inertial_nav.get_position();
 }
 
 // guided_limit_check - returns true if guided mode has breached a limit
@@ -537,7 +543,7 @@ bool Sub::guided_limit_check()
     }
 
     // get current location
-    const Vector3f& curr_pos = inertial_nav.get_position_neu_cm();
+    const Vector3f& curr_pos = inertial_nav.get_position();
 
     // check if we have gone below min alt
     if (!is_zero(guided_limit.alt_min_cm) && (curr_pos.z < guided_limit.alt_min_cm)) {
@@ -551,7 +557,7 @@ bool Sub::guided_limit_check()
 
     // check if we have gone beyond horizontal limit
     if (guided_limit.horiz_max_cm > 0.0f) {
-        const float horiz_move = get_horizontal_distance_cm(guided_limit.start_pos.xy(), curr_pos.xy());
+        float horiz_move = get_horizontal_distance_cm(guided_limit.start_pos, curr_pos);
         if (horiz_move > guided_limit.horiz_max_cm) {
             return true;
         }

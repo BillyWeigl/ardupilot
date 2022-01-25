@@ -3,6 +3,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_Common/Location.h>
 #include <stdint.h>
+#include <AP_Common/Location.h>
 #include <AP_Soaring/AP_Soaring.h>
 #include <AP_ADSB/AP_ADSB.h>
 #include <AP_Vehicle/ModeReason.h>
@@ -50,9 +51,6 @@ public:
         QACRO         = 23,
 #endif
         THERMAL       = 24,
-#if HAL_QUADPLANE_ENABLED
-        LOITER_ALT_QLAND = 25,
-#endif
     };
 
     // Constructor
@@ -117,10 +115,7 @@ public:
 
     // method for mode specific target altitude profiles
     virtual bool update_target_altitude() { return false; }
-
-    // handle a guided target request from GCS
-    virtual bool handle_guided_request(Location target_loc) { return false; }
-
+    
 protected:
 
     // subclasses override this to perform checks before entering the mode
@@ -222,9 +217,6 @@ public:
 
     bool does_auto_throttle() const override { return true; }
 
-    // handle a guided target request from GCS
-    bool handle_guided_request(Location target_loc) override;
-
 protected:
 
     bool _enter() override;
@@ -277,29 +269,6 @@ protected:
     bool _enter() override;
 };
 
-#if HAL_QUADPLANE_ENABLED
-class ModeLoiterAltQLand : public ModeLoiter
-{
-public:
-
-    Number mode_number() const override { return Number::LOITER_ALT_QLAND; }
-    const char *name() const override { return "Loiter to QLAND"; }
-    const char *name4() const override { return "L2QL"; }
-
-    // handle a guided target request from GCS
-    bool handle_guided_request(Location target_loc) override;
-
-protected:
-    bool _enter() override;
-
-    void navigate() override;
-
-private:
-    void switch_qland();
-
-};
-#endif // HAL_QUADPLANE_ENABLED
-
 class ModeManual : public Mode
 {
 public:
@@ -310,6 +279,10 @@ public:
 
     // methods that affect movement of the vehicle in this mode
     void update() override;
+
+protected:
+
+    void _exit() override;
 };
 
 
@@ -591,8 +564,6 @@ public:
     bool does_auto_throttle() const override { return true; }
 
     bool update_target_altitude() override;
-
-    bool allows_throttle_nudging() const override;
 
 protected:
 

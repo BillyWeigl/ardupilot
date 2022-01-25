@@ -80,11 +80,15 @@ void Plane::init_ardupilot()
     log_init();
 #endif
 
+    // initialise airspeed sensor
+    airspeed.init();
+
     AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
-#if AP_AIRSPEED_ENABLED
-    airspeed.set_log_bit(MASK_LOG_IMU);
+// init EFI monitoring
+#if HAL_EFI_ENABLED
+    g2.efi.init();
 #endif
 
     // GPS Initialization
@@ -137,7 +141,7 @@ void Plane::init_ardupilot()
     reset_control_switch();
 
     // initialise sensor
-#if AP_OPTICALFLOW_ENABLED
+#if OPTFLOW == ENABLED
     if (optflow.enabled()) {
         optflow.init(-1);
     }
@@ -187,9 +191,9 @@ void Plane::startup_ground(void)
         );
 #endif
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     g2.scripting.init();
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
 
     // reset last heartbeat time, so we don't trigger failsafe on slow
     // startup
@@ -408,6 +412,14 @@ void Plane::startup_INS_ground(void)
     //-----------------------------
     barometer.set_log_baro_bit(MASK_LOG_IMU);
     barometer.calibrate();
+
+    if (airspeed.enabled()) {
+        // initialize airspeed sensor
+        // --------------------------
+        airspeed.calibrate(true);
+    } else {
+        gcs().send_text(MAV_SEVERITY_WARNING,"No airspeed sensor present");
+    }
 }
 
 // sets notify object flight mode information
@@ -436,7 +448,7 @@ int8_t Plane::throttle_percentage(void)
 {
 #if HAL_QUADPLANE_ENABLED
     if (quadplane.in_vtol_mode() && !quadplane.tailsitter.in_vtol_transition()) {
-        return quadplane.motors->get_throttle_out() * 100.0;
+        return quadplane.throttle_percentage();
     }
 #endif
     float throttle = SRV_Channels::get_output_scaled(SRV_Channel::k_throttle);
@@ -484,7 +496,7 @@ void Plane::update_dynamic_notch()
             // set the harmonic notch filter frequency scaled on measured frequency
             if (ins.has_harmonic_option(HarmonicNotchFilterParams::Options::DynamicHarmonic)) {
                 float notches[INS_MAX_NOTCHES];
-                const uint8_t num_notches = AP::esc_telem().get_motor_frequencies_hz(ins.get_num_gyro_dynamic_notches(), notches);
+                const uint8_t num_notches = AP::esc_telem().get_motor_frequencies_hz(INS_MAX_NOTCHES, notches);
 
                 for (uint8_t i = 0; i < num_notches; i++) {
                     notches[i] =  MAX(ref_freq, notches[i]);
@@ -508,7 +520,7 @@ void Plane::update_dynamic_notch()
             // set the harmonic notch filter frequency scaled on measured frequency
             if (ins.has_harmonic_option(HarmonicNotchFilterParams::Options::DynamicHarmonic)) {
                 float notches[INS_MAX_NOTCHES];
-                const uint8_t peaks = gyro_fft.get_weighted_noise_center_frequencies_hz(ins.get_num_gyro_dynamic_notches(), notches);
+                const uint8_t peaks = gyro_fft.get_weighted_noise_center_frequencies_hz(INS_MAX_NOTCHES, notches);
 
                 ins.update_harmonic_notch_frequencies_hz(peaks, notches);
             } else {

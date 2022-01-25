@@ -49,7 +49,7 @@ void Sub::init_ardupilot()
         AP_Param::set_default_by_name("BARO_EXT_BUS", 1);
         break;
     }
-#elif CONFIG_HAL_BOARD != HAL_BOARD_LINUX
+#else
     AP_Param::set_default_by_name("BARO_EXT_BUS", 1);
 #endif
     celsius.init(barometer.external_bus());
@@ -85,11 +85,7 @@ void Sub::init_ardupilot()
     AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
-#if AP_AIRSPEED_ENABLED
-    airspeed.set_log_bit(MASK_LOG_IMU);
-#endif
-
-#if AP_OPTICALFLOW_ENABLED
+#if OPTFLOW == ENABLED
     // initialise optical flow sensor
     optflow.init(MASK_LOG_OPTFLOW);
 #endif
@@ -155,9 +151,11 @@ void Sub::init_ardupilot()
 
     startup_INS_ground();
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     g2.scripting.init();
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
+
+    g2.airspeed.init();
 
     // we don't want writes to the serial port to cause us to pause
     // mid-flight, so set the serial ports non-blocking once we are
@@ -233,7 +231,7 @@ bool Sub::optflow_position_ok()
 
     // return immediately if neither optflow nor visual odometry is enabled
     bool enabled = false;
-#if AP_OPTICALFLOW_ENABLED
+#if OPTFLOW == ENABLED
     if (optflow.enabled()) {
         enabled = true;
     }

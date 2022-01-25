@@ -4,7 +4,7 @@
 
 #include <AP_Gripper/AP_Gripper.h>
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
 #include <AP_Scripting/AP_Scripting.h>
 #endif
 
@@ -335,9 +335,13 @@ public:
     // control over servo output ranges
     SRV_Channels servo_channels;
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     AP_Scripting scripting;
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
+
+    // Airspeed
+    AP_Airspeed airspeed;
+
 };
 
 extern const AP_Param::Info        var_info[];

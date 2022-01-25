@@ -154,9 +154,6 @@ void RC_Channel_Plane::init_aux_function(const RC_Channel::aux_func_t ch_option,
     case AUX_FUNC::RTL:
     case AUX_FUNC::TAKEOFF:
     case AUX_FUNC::FBWA:
-#if HAL_QUADPLANE_ENABLED
-    case AUX_FUNC::QRTL:
-#endif
     case AUX_FUNC::FBWA_TAILDRAGGER:
     case AUX_FUNC::FWD_THR:
     case AUX_FUNC::LANDING_FLARE:
@@ -166,9 +163,6 @@ void RC_Channel_Plane::init_aux_function(const RC_Channel::aux_func_t ch_option,
 #if HAL_QUADPLANE_ENABLED
     case AUX_FUNC::ARMDISARM_AIRMODE:
 #endif
-    case AUX_FUNC::TRIM_TO_CURRENT_SERVO_RC:
-    case AUX_FUNC::EMERGENCY_LANDING_EN:
-    case AUX_FUNC::FW_AUTOTUNE:
         break;
 
     case AUX_FUNC::SOARING:
@@ -255,12 +249,6 @@ bool RC_Channel_Plane::do_aux_function(const aux_func_t ch_option, const AuxSwit
         do_aux_function_change_mode(Mode::Number::FLY_BY_WIRE_A, ch_flag);
         break;
 
-#if HAL_QUADPLANE_ENABLED
-    case AUX_FUNC::QRTL:
-        do_aux_function_change_mode(Mode::Number::QRTL, ch_flag);
-        break;
-#endif
-
     case AUX_FUNC::SOARING:
         do_aux_function_soaring_3pos(ch_flag);
         break;
@@ -338,9 +326,7 @@ case AUX_FUNC::ARSPD_CALIBRATE:
 
     case AUX_FUNC::PARACHUTE_RELEASE:
 #if PARACHUTE == ENABLED
-        if (ch_flag == AuxSwitchPos::HIGH) {
-            plane.parachute_manual_release();
-        }
+        plane.parachute_manual_release();
 #endif
         break;
 
@@ -360,29 +346,6 @@ case AUX_FUNC::ARSPD_CALIBRATE:
         }
         break;
 #endif
-
-    case AUX_FUNC::TRIM_TO_CURRENT_SERVO_RC:
-        if (ch_flag == AuxSwitchPos::HIGH) {
-            plane.trim_radio();
-        }
-        break;
-
-    case AUX_FUNC::EMERGENCY_LANDING_EN:
-        switch (ch_flag) {
-        case AuxSwitchPos::HIGH:
-            plane.emergency_landing = true;
-            break;
-        case AuxSwitchPos::MIDDLE:
-            break;
-        case AuxSwitchPos::LOW:
-            plane.emergency_landing = false;
-            break;
-        }
-        break;
-
-    case AUX_FUNC::FW_AUTOTUNE:
-        plane.autotune_enable(ch_flag == AuxSwitchPos::HIGH);
-        break;
 
     default:
         return RC_Channel::do_aux_function(ch_option, ch_flag);

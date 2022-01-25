@@ -54,8 +54,12 @@
 
 #include "AP_Arming.h"
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
 #include <AP_Scripting/AP_Scripting.h>
+#endif
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+#include <SITL/SITL.h>
 #endif
 
 #include "mode.h"
@@ -81,6 +85,10 @@ private:
 
     AP_Logger logger;
 
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    SITL::SIM sitl;
+#endif
+    
     /**
        antenna control channels
     */
@@ -116,7 +124,7 @@ private:
     ModeServoTest mode_servotest;
     ModeStop mode_stop;
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     AP_Scripting scripting;
 #endif
 

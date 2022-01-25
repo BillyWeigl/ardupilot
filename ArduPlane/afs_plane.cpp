@@ -25,8 +25,8 @@ void AP_AdvancedFailsafe_Plane::terminate_vehicle(void)
         plane.landing.terminate();
     } else {
         // aerodynamic termination is the default approach to termination
-        SRV_Channels::set_output_scaled(SRV_Channel::k_flap_auto, 100.0);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_flap, 100.0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_flap_auto, 100);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_flap, 100);
         SRV_Channels::set_output_scaled(SRV_Channel::k_aileron, SERVO_MAX);
         SRV_Channels::set_output_scaled(SRV_Channel::k_rudder, SERVO_MAX);
         SRV_Channels::set_output_scaled(SRV_Channel::k_elevator, SERVO_MAX);
@@ -81,7 +81,7 @@ void AP_AdvancedFailsafe_Plane::setup_IO_failsafe(void)
     if (plane.quadplane.available()) {
         // setup AP_Motors outputs for failsafe
         uint16_t mask = plane.quadplane.motors->get_motor_mask();
-        hal.rcout->set_failsafe_pwm(mask, plane.quadplane.motors->get_pwm_output_min());
+        hal.rcout->set_failsafe_pwm(mask, plane.quadplane.thr_min_pwm);
     }
 #endif
 }

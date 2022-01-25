@@ -23,8 +23,6 @@ BWFD: Successes: ['MOUNT', 'AUTOTUNE_ENABLED', 'AC_FENCE', 'CAMERA', 'RANGEFINDE
 BWFD: Failures: ['LOGGING_ENABLED']
 pbarker@bluebottle:~/rc/ardupilot(build-with-disabled-features)$ q
 
-AP_FLAKE8_CLEAN
-
 ''' # noqa
 
 import re
@@ -68,7 +66,7 @@ class Builder():
 
     def get_config_variables(self):
         ret = []
-        r = (r' *# *define +([A-Z_]+)\s+'
+        r = (' *# *define +([A-Z_]+)\s+'
              '(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)')
         with open(util.reltopdir(self.config)) as fd:
             for line in fd:
@@ -91,7 +89,7 @@ class Builder():
             with open(util.reltopdir(tmpfile)) as fd:
                 did_enable = False
                 for line in fd:
-                    regex = r' *# *define +%s\s+(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)' % (var[0],)
+                    regex = ' *# *define +%s\s+(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)' % (var[0],)
                     match = re.match(regex, line)
                     if match is not None:
                         if (match.group(1) in ["ENABLED",
@@ -111,7 +109,7 @@ class Builder():
                 for line in fd:
                     things_to_toggle = self.reverse_deps_for_var(var[0])
                     for thing in things_to_toggle:
-                        regex = r' *# *define +%s\s+(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)' % thing
+                        regex = ' *# *define +%s\s+(ENABLED|DISABLED|!HAL_MINIMIZE_FEATURES)' % thing
                         match = re.match(regex, line)
                         if match is not None:
                             if did_enable:
@@ -186,7 +184,7 @@ class Builder():
 class BuilderCopter(Builder):
     def get_config_variables(self):
         ret = []
-        r = r'//#define ([A-Z_]+)\s+(ENABLED|DISABLED!HAL_MINIMIZE_FEATURES)'
+        r = '//#define ([A-Z_]+)\s+(ENABLED|DISABLED!HAL_MINIMIZE_FEATURES)'
         with open(util.reltopdir(self.config)) as fd:
             for line in fd:
                 print("line: %s" % line)
@@ -269,24 +267,24 @@ specs = [
 ]
 
 
-if __name__ == '__main__':
-    builders = []
+builders = []
 
-    # append autotest builders:
-    for spec in specs:
-        builder = Builder(spec, autotest=True)
+# append autotest builders:
+for spec in specs:
+    builder = Builder(spec, autotest=True)
+    builder.run()
+    builders.append(builder)
+
+# append directly-build-by-waf targets
+for spec in specs:
+    for board in ["CubeOrange"]:
+        builder = Builder(spec, board=board)
         builder.run()
         builders.append(builder)
 
-    # append directly-build-by-waf targets
-    for spec in specs:
-        for board in ["CubeOrange"]:
-            builder = Builder(spec, board=board)
-            builder.run()
-            builders.append(builder)
 
-    print("")
-    for builder in builders:
-        print("Builder: %s" % builder.description())
-        #    print("  Successes: %s" % builder.successes)
-        print("   Failures: %s" % builder.failures)
+print("")
+for builder in builders:
+    print("Builder: %s" % builder.description())
+#    print("  Successes: %s" % builder.successes)
+    print("   Failures: %s" % builder.failures)

@@ -276,13 +276,6 @@ public:
         FUNCTOR_BIND_MEMBER(&ModeAuto::verify_command_callback, bool, const AP_Mission::Mission_Command&),
         FUNCTOR_BIND_MEMBER(&ModeAuto::exit_mission, void)};
 
-    enum Mis_Done_Behave {
-        MIS_DONE_BEHAVE_HOLD      = 0,
-        MIS_DONE_BEHAVE_LOITER    = 1,
-        MIS_DONE_BEHAVE_ACRO      = 2,
-        MIS_DONE_BEHAVE_MANUAL    = 3
-    };
-
 protected:
 
     bool _enter() override;
@@ -331,7 +324,13 @@ private:
     void do_set_reverse(const AP_Mission::Mission_Command& cmd);
     void do_guided_limits(const AP_Mission::Mission_Command& cmd);
 
-    bool waiting_to_start;  // true if waiting for EKF origin before starting mission
+    enum Mis_Done_Behave {
+        MIS_DONE_BEHAVE_HOLD      = 0,
+        MIS_DONE_BEHAVE_LOITER    = 1,
+        MIS_DONE_BEHAVE_ACRO      = 2,
+        MIS_DONE_BEHAVE_MANUAL    = 3
+    };
+
     bool auto_triggered;        // true when auto has been triggered to start
 
     // HeadingAndSpeed sub mode variables
@@ -407,9 +406,6 @@ public:
     // vehicle start loiter
     bool start_loiter();
 
-    // start stopping
-    void start_stop();
-
     // guided limits
     void limit_set(uint32_t timeout_ms, float horiz_max);
     void limit_clear();
@@ -423,8 +419,7 @@ protected:
         Guided_HeadingAndSpeed,
         Guided_TurnRateAndSpeed,
         Guided_Loiter,
-        Guided_SteeringAndThrottle,
-        Guided_Stop
+        Guided_SteeringAndThrottle
     };
 
     bool _enter() override;

@@ -58,11 +58,9 @@ const AP_Param::Info ReplayVehicle::var_info[] = {
     // @Path: ../libraries/AP_AHRS/AP_AHRS.cpp
     GOBJECT(ahrs,                   "AHRS_",    AP_AHRS),
 
-#if AP_AIRSPEED_ENABLED
     // @Group: ARSPD_
     // @Path: ../libraries/AP_Airspeed/AP_Airspeed.cpp
     GOBJECT(airspeed,                               "ARSP_",   AP_Airspeed),
-#endif
 
     // @Group: EK2_
     // @Path: ../libraries/AP_NavEKF2/AP_NavEKF2.cpp
@@ -112,10 +110,8 @@ bool AP_AdvancedFailsafe::gcs_terminate(bool should_terminate, const char *reaso
 
 // avoid building/linking LTM:
 void AP_LTM_Telem::init() {};
-#if AP_DEVO_TELEM_ENABLED
 // avoid building/linking Devo:
 void AP_DEVO_Telem::init() {};
-#endif
 
 void ReplayVehicle::init_ardupilot(void)
 {

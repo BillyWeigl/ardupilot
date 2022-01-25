@@ -371,6 +371,9 @@ public:
     // windvane
     AP_WindVane windvane;
 
+    // Airspeed
+    AP_Airspeed airspeed;
+
     // mission behave
     AP_Int8 mis_done_behave;
 
@@ -380,9 +383,9 @@ public:
     // stick mixing for auto modes
     AP_Int8     stick_mixing;
 
-#if AP_SCRIPTING_ENABLED
+#ifdef ENABLE_SCRIPTING
     AP_Scripting scripting;
-#endif // AP_SCRIPTING_ENABLED
+#endif // ENABLE_SCRIPTING
 
     // waypoint navigation
     AR_WPNav wp_nav;

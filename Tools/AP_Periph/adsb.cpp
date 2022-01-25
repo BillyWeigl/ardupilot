@@ -25,8 +25,6 @@
 
 extern const AP_HAL::HAL &hal;
 
-# if !HAL_GCS_ENABLED
-
 #include "include/mavlink/v2.0/protocol.h"
 #include "include/mavlink/v2.0/mavlink_types.h"
 #include "include/mavlink/v2.0/ardupilotmega/mavlink.h"
@@ -35,7 +33,6 @@ extern const AP_HAL::HAL &hal;
 #include "include/mavlink/v2.0/mavlink_helpers.h"
 #pragma GCC diagnostic pop
 
-#endif
 
 /*
   init ADSB support

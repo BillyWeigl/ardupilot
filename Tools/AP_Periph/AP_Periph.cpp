@@ -111,7 +111,6 @@ void AP_Periph_FW::init()
 
 #if HAL_GCS_ENABLED
     gcs().setup_console();
-    gcs().setup_uarts();
     gcs().send_text(MAV_SEVERITY_INFO, "AP_Periph GCS Initialised!");
 #endif
 
@@ -181,7 +180,6 @@ void AP_Periph_FW::init()
 
 #ifdef HAL_PERIPH_ENABLE_AIRSPEED
     if (airspeed.enabled()) {
-        // Note: logging of ARSPD is not enabled currently. To enable, call airspeed.set_log_bit();
         airspeed.init();
     }
 #endif
@@ -215,9 +213,6 @@ void AP_Periph_FW::init()
     notify.init();
 #endif
 
-#if AP_SCRIPTING_ENABLED
-    scripting.init();
-#endif
     start_ms = AP_HAL::native_millis();
 }
 

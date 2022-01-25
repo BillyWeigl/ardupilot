@@ -11,7 +11,7 @@
 #include <AP_Motors/AP_Motors.h>
 #include <AC_PID/AC_PID.h>
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h> // Attitude control library
-#include <AP_InertialNav/AP_InertialNav.h>
+#include <AP_InertialNav/AP_InertialNav_NavEKF.h>
 #include <AC_AttitudeControl/AC_PosControl.h>
 #include <AC_WPNav/AC_WPNav.h>
 #include <AC_WPNav/AC_Loiter.h>
@@ -22,7 +22,6 @@
 #include "defines.h"
 #include "tailsitter.h"
 #include "tiltrotor.h"
-#include "transition.h"
 
 /*
   QuadPlane specific functionality
@@ -40,8 +39,6 @@ public:
     friend class RC_Channel;
     friend class Tailsitter;
     friend class Tiltrotor;
-    friend class SLT_Transition;
-    friend class Tailsitter_Transition;
 
     friend class Mode;
     friend class ModeAuto;
@@ -55,7 +52,6 @@ public:
     friend class ModeQStabilize;
     friend class ModeQAutotune;
     friend class ModeQAcro;
-    friend class ModeLoiterAltQLand;
     
     QuadPlane(AP_AHRS &_ahrs);
 
@@ -114,8 +110,13 @@ public:
     // vtol help for is_flying()
     bool is_flying(void);
 
+    // return current throttle as a percentate
+    uint8_t throttle_percentage(void) const {
+        return last_throttle * 100;
+    }
+
     // return desired forward throttle percentage
-    float forward_throttle_pct();
+    int8_t forward_throttle_pct();
     float get_weathervane_yaw_rate_cds(void);
 
     // see if we are flying from vtol point of view
@@ -166,7 +167,7 @@ private:
     AP_AHRS &ahrs;
     AP_Vehicle::MultiCopter aparm;
 
-    AP_InertialNav inertial_nav{ahrs};
+    AP_InertialNav_NavEKF inertial_nav{ahrs};
 
     AP_Enum<AP_Motors::motor_frame_class> frame_class;
     AP_Enum<AP_Motors::motor_frame_type> frame_type;
@@ -232,6 +233,7 @@ private:
     // use multicopter rate controller
     void multicopter_attitude_rate_update(float yaw_rate_cds);
 
+    void check_attitude_relax(void);
     float get_pilot_throttle(void);
     void control_hover(void);
     void relax_attitude_control();
@@ -248,7 +250,6 @@ private:
     bool should_relax(void);
     void motors_output(bool run_rate_controller = true);
     void Log_Write_QControl_Tuning();
-    void log_QPOS(void);
     float landing_descent_rate_cms(float height_above_ground);
     
     // setup correct aux channels for frame class
@@ -265,30 +266,15 @@ private:
     void setup_defaults(void);
 
     // calculate a stopping distance for fixed-wing to vtol transitions
-    float stopping_distance(float ground_speed_squared);
     float stopping_distance(void);
-
-    // distance below which we don't do approach, based on stopping
-    // distance for cruise speed
-    float transition_threshold(void);
-
+    
     AP_Int16 transition_time_ms;
-    AP_Int16 back_trans_pitch_limit_ms;
 
     // transition deceleration, m/s/s
     AP_Float transition_decel;
 
-    // transition failure handling
-    struct TRANS_FAIL {
-        enum ACTION {
-            QLAND,
-            QRTL
-        };
-        AP_Int16 timeout;
-        AP_Enum<ACTION> action;
-        bool warned;
-    } transition_failure;
-
+    // transition failure milliseconds
+    AP_Int16 transition_failure;
 
     // Quadplane trim, degrees
     AP_Float ahrs_trim_pitch;
@@ -298,6 +284,10 @@ private:
     AP_Float fw_land_approach_radius;
 
     AP_Int16 rc_speed;
+
+    // min and max PWM for throttle
+    AP_Int16 thr_min_pwm;
+    AP_Int16 thr_max_pwm;
 
     // speed below which quad assistance is given
     AP_Float assist_speed;
@@ -369,7 +359,7 @@ private:
         AP_Float gain;
         float integrator;
         uint32_t last_ms;
-        float last_pct;
+        int8_t last_pct;
     } vel_forward;
 
     struct {
@@ -380,14 +370,31 @@ private:
     } weathervane;
     
     bool initialised;
+    
+    // timer start for transition
+    uint32_t transition_start_ms;
+    float transition_initial_pitch;
+    uint32_t transition_low_airspeed_ms;
 
     Location last_auto_target;
+
+    // last throttle value when active
+    float last_throttle;
+
+    // pitch when we enter loiter mode
+    int32_t loiter_initial_pitch_cd;
 
     // when did we last run the attitude controller?
     uint32_t last_att_control_ms;
 
-    // transition logic
-    Transition *transition = nullptr;
+    // true if we have reached the airspeed threshold for transition
+    enum {
+        TRANSITION_AIRSPEED_WAIT,
+        TRANSITION_TIMER,
+        TRANSITION_ANGLE_WAIT_FW,
+        TRANSITION_ANGLE_WAIT_VTOL,
+        TRANSITION_DONE
+    } transition_state;
 
     // true when waiting for pilot throttle
     bool throttle_wait:1;
@@ -441,8 +448,6 @@ private:
         uint32_t thrust_loss_start_ms;
         uint32_t last_log_ms;
         bool reached_wp_speed;
-        uint32_t last_run_ms;
-        float pos1_start_speed;
     private:
         uint32_t last_state_change_ms;
         enum position_control_state state;
@@ -480,6 +485,9 @@ private:
     uint32_t last_pidz_active_ms;
     uint32_t last_pidz_init_ms;
 
+    // time when we were last in a vtol control mode
+    uint32_t last_vtol_mode_ms;
+
     // throttle scailing for vectored motors in FW flighy
     float FW_vector_throttle_scaling(void);
 
@@ -511,7 +519,6 @@ private:
         OPTION_DISABLE_APPROACH=(1<<16),
         OPTION_REPOSITION_LANDING=(1<<17),
         OPTION_ONLY_ARM_IN_QMODE_OR_AUTO=(1<<18),
-        OPTION_TRANS_FAIL_TO_FW=(1<<19),
     };
 
     AP_Float takeoff_failure_scalar;

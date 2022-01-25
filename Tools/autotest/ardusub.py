@@ -367,14 +367,6 @@ class AutoTestSub(AutoTest):
                 break
         self.initialise_after_reboot_sitl()
 
-    def DoubleCircle(self):
-        self.change_mode('CIRCLE')
-        self.wait_ready_to_arm()
-        self.arm_vehicle()
-        self.change_mode('STABILIZE')
-        self.change_mode('CIRCLE')
-        self.disarm_vehicle()
-
     def default_parameter_list(self):
         ret = super(AutoTestSub, self).default_parameter_list()
         ret["FS_GCS_ENABLE"] = 0  # FIXME
@@ -404,10 +396,6 @@ class AutoTestSub(AutoTest):
             ("GripperMission",
              "Test gripper mission items",
              self.test_gripper_mission),
-
-            ("DoubleCircle",
-             "Test entering circle twice",
-             self.DoubleCircle),
 
             ("MotorThrustHoverParameterIgnore", "Test if we are ignoring MOT_THST_HOVER", self.test_mot_thst_hover_ignore),
 

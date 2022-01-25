@@ -58,7 +58,6 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
     case Mode::Number::TAKEOFF:
 #if HAL_QUADPLANE_ENABLED
     case Mode::Number::QRTL:
-    case Mode::Number::LOITER_ALT_QLAND:
 #endif
         _base_mode = MAV_MODE_FLAG_GUIDED_ENABLED |
                      MAV_MODE_FLAG_STABILIZE_ENABLED;
@@ -79,8 +78,8 @@ MAV_MODE GCS_MAVLINK_Plane::base_mode() const
         _base_mode |= MAV_MODE_FLAG_STABILIZE_ENABLED;
     }
 
-    if (plane.g.stick_mixing != StickMixing::NONE && plane.control_mode != &plane.mode_initializing) {
-        if ((plane.g.stick_mixing != StickMixing::VTOL_YAW) || (plane.control_mode == &plane.mode_auto)) {
+    if (plane.g.stick_mixing != STICK_MIXING_DISABLED && plane.control_mode != &plane.mode_initializing) {
+        if ((plane.g.stick_mixing != STICK_MIXING_VTOL_YAW) || (plane.control_mode == &plane.mode_auto)) {
             // all modes except INITIALISING have some form of manual
             // override if stick mixing is enabled
             _base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED;
@@ -184,7 +183,7 @@ void GCS_MAVLINK_Plane::send_nav_controller_output() const
             wp_nav_valid ? quadplane.wp_nav->get_wp_bearing_to_destination() : 0,
             wp_nav_valid ? MIN(quadplane.wp_nav->get_wp_distance_to_destination() * 0.01, UINT16_MAX) : 0,
             (plane.control_mode != &plane.mode_qstabilize) ? quadplane.pos_control->get_pos_error_z_cm() * 0.01 : 0,
-            plane.airspeed_error * 100,  // incorrect units; see PR#7933
+            plane.airspeed_error * 100,
             wp_nav_valid ? quadplane.wp_nav->crosstrack_error() : 0);
         return;
     }
@@ -199,7 +198,7 @@ void GCS_MAVLINK_Plane::send_nav_controller_output() const
             nav_controller->target_bearing_cd() * 0.01,
             MIN(plane.auto_state.wp_distance, UINT16_MAX),
             plane.altitude_error_cm * 0.01,
-            plane.airspeed_error * 100,  // incorrect units; see PR#7933
+            plane.airspeed_error * 100,
             nav_controller->crosstrack_error());
     }
 }
@@ -265,7 +264,7 @@ float GCS_MAVLINK_Plane::vfr_hud_climbrate() const
         return plane.g2.soaring_controller.get_vario_reading();
     }
 #endif
-    return GCS_MAVLINK::vfr_hud_climbrate();
+    return AP::baro().get_climb_rate();
 }
 
 void GCS_MAVLINK_Plane::send_wind() const
@@ -604,7 +603,20 @@ const struct GCS_MAVLINK::stream_entries GCS_MAVLINK::all_stream_entries[] = {
  */
 bool GCS_MAVLINK_Plane::handle_guided_request(AP_Mission::Mission_Command &cmd)
 {
-    return plane.control_mode->handle_guided_request(cmd.content.location);
+    if (plane.control_mode != &plane.mode_guided) {
+        // only accept position updates when in GUIDED mode
+        return false;
+    }
+    plane.guided_WP_loc = cmd.content.location;
+    
+    // add home alt if needed
+    if (plane.guided_WP_loc.relative_alt) {
+        plane.guided_WP_loc.alt += plane.home.alt;
+        plane.guided_WP_loc.relative_alt = 0;
+    }
+
+    plane.set_guided_WP();
+    return true;
 }
 
 /*
@@ -630,6 +642,19 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_preflight_calibration(const mavlink
     plane.in_calibration = false;
 
     return ret;
+}
+
+MAV_RESULT GCS_MAVLINK_Plane::_handle_command_preflight_calibration(const mavlink_command_long_t &packet)
+{
+    if (is_equal(packet.param4,1.0f)) {
+        if (plane.trim_radio()) {
+            return MAV_RESULT_ACCEPTED;
+        } else {
+            return MAV_RESULT_FAILED;
+        }
+    }
+
+    return GCS_MAVLINK::_handle_command_preflight_calibration(packet);
 }
 
 void GCS_MAVLINK_Plane::packetReceived(const mavlink_status_t &status,
@@ -1290,6 +1315,15 @@ void GCS_MAVLINK_Plane::handleMessage(const mavlink_message_t &msg)
         break;
     }
 
+    case MAVLINK_MSG_ID_ADSB_VEHICLE:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_OUT_CFG:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_OUT_DYNAMIC:
+    case MAVLINK_MSG_ID_UAVIONIX_ADSB_TRANSCEIVER_HEALTH_REPORT:
+#if HAL_ADSB_ENABLED    
+        plane.adsb.handle_message(chan, msg);
+#endif
+        break;
+
     default:
         handle_common_message(msg);
         break;
@@ -1404,28 +1438,16 @@ uint8_t GCS_MAVLINK_Plane::high_latency_wind_direction() const
     // need to convert -180->180 to 0->360/2
     return wrap_360(degrees(atan2f(-wind.y, -wind.x))) / 2;
 }
-#endif // HAL_HIGH_LATENCY2_ENABLED
 
-MAV_VTOL_STATE GCS_MAVLINK_Plane::vtol_state() const
+int8_t GCS_MAVLINK_Plane::high_latency_air_temperature() const
 {
-#if !HAL_QUADPLANE_ENABLED
-    return MAV_VTOL_STATE_UNDEFINED;
-#else
-    if (!plane.quadplane.available()) {
-        return MAV_VTOL_STATE_UNDEFINED;
+    // return units are degC
+    AP_Airspeed *airspeed = AP_Airspeed::get_singleton();
+    float air_temperature = 0;
+    if (airspeed != nullptr &&
+        airspeed->enabled()) {
+            airspeed->get_temperature(air_temperature);
     }
-
-    return plane.quadplane.transition->get_mav_vtol_state();
-#endif
-};
-
-MAV_LANDED_STATE GCS_MAVLINK_Plane::landed_state() const
-{
-    if (plane.is_flying()) {
-        // note that Q-modes almost always consider themselves as flying
-        return MAV_LANDED_STATE_IN_AIR;
-    }
-
-    return MAV_LANDED_STATE_ON_GROUND;
+    return air_temperature;
 }
-
+#endif // HAL_HIGH_LATENCY2_ENABLED

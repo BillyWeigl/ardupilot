@@ -72,15 +72,6 @@ const AP_Param::GroupInfo Tiltrotor::var_info[] = {
     // @User: Standard
     AP_GROUPINFO("FIX_GAIN", 9, Tiltrotor, fixed_gain, 0),
 
-    // @Param: WING_FLAP
-    // @DisplayName: Tiltrotor tilt angle that will be used as flap
-    // @Description: For use on tilt wings, the wing will tilt up to this angle for flap, transistion will be complete when the wing reaches this angle from the forward fight position, 0 disables
-    // @Units: deg
-    // @Increment: 1
-    // @Range: 0 15
-    // @User: Standard
-    AP_GROUPINFO("WING_FLAP", 10, Tiltrotor, flap_angle_deg, 0),
-
     AP_GROUPEND
 };
 
@@ -101,27 +92,11 @@ void Tiltrotor::setup()
         enable.set_and_save(1);
     }
 
-    if (enable <= 0) {
+    if (!enabled()) {
         return;
     }
 
     _is_vectored = tilt_mask != 0 && type == TILT_TYPE_VECTORED_YAW;
-
-    // true if a fixed forward motor is configured, either throttle, throttle left  or throttle right.
-    // bicopter tiltrotors use throttle left and right as tilting motors, so they don't count in that case.
-    _have_fw_motor = SRV_Channels::function_assigned(SRV_Channel::k_throttle) ||
-                    ((SRV_Channels::function_assigned(SRV_Channel::k_throttleLeft) || SRV_Channels::function_assigned(SRV_Channel::k_throttleRight))
-                        && (type != TILT_TYPE_BICOPTER));
-
-
-    // check if there are any perminant VTOL motors
-    for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; ++i) {
-        if (motors->is_motor_enabled(i) && ((tilt_mask & (1U<<1)) == 0)) {
-            // enabled motor not set in tilt mask
-            _have_vtol_motor = true;
-            break;
-        }
-    }
 
     if (quadplane.motors_var_info == AP_MotorsMatrix::var_info && _is_vectored) {
         // we will be using vectoring for yaw
@@ -140,20 +115,12 @@ void Tiltrotor::setup()
             SRV_Channels::set_range(SRV_Channel::k_tiltMotorRearRight, 1000);
         }
     }
-
-    transition = new Tiltrotor_Transition(quadplane, motors, *this);
-    if (!transition) {
-        AP_BoardConfig::allocation_error("tiltrotor transition");
-    }
-    quadplane.transition = transition;
-
-    setup_complete = true;
 }
 
 /*
   calculate maximum tilt change as a proportion from 0 to 1 of tilt
  */
-float Tiltrotor::tilt_max_change(bool up, bool in_flap_range) const
+float Tiltrotor::tilt_max_change(bool up) const
 {
     float rate;
     if (up || max_rate_down_dps <= 0) {
@@ -161,7 +128,7 @@ float Tiltrotor::tilt_max_change(bool up, bool in_flap_range) const
     } else {
         rate = max_rate_down_dps;
     }
-    if (type != TILT_TYPE_BINARY && !up && !in_flap_range) {
+    if (type != TILT_TYPE_BINARY && !up) {
         bool fast_tilt = false;
         if (plane.control_mode == &plane.mode_manual) {
             fast_tilt = true;
@@ -183,26 +150,11 @@ float Tiltrotor::tilt_max_change(bool up, bool in_flap_range) const
  */
 void Tiltrotor::slew(float newtilt)
 {
-    float max_change = tilt_max_change(newtilt<current_tilt, newtilt > get_fully_forward_tilt());
+    float max_change = tilt_max_change(newtilt<current_tilt);
     current_tilt = constrain_float(newtilt, current_tilt-max_change, current_tilt+max_change);
-
-    angle_achieved = is_equal(newtilt, current_tilt);
 
     // translate to 0..1000 range and output
     SRV_Channels::set_output_scaled(SRV_Channel::k_motor_tilt, 1000 * current_tilt);
-}
-
-// return the current tilt value that represens forward flight
-// tilt wings can sustain forward flight with some amount of wing tilt
-float Tiltrotor::get_fully_forward_tilt() const
-{
-    return 1.0 - (flap_angle_deg / 90.0);
-}
-
-// return the target tilt value for forward flight
-float Tiltrotor::get_forward_flight_tilt() const
-{
-    return 1.0 - ((flap_angle_deg / 90.0) * SRV_Channels::get_output_scaled(SRV_Channel::k_flap_auto) * 0.01);
 }
 
 /*
@@ -219,12 +171,12 @@ void Tiltrotor::continuous_update(void)
     if (!quadplane.in_vtol_mode() && (!hal.util->get_soft_armed() || !quadplane.assisted_flight)) {
         // we are in pure fixed wing mode. Move the tiltable motors all the way forward and run them as
         // a forward motor
-        slew(get_forward_flight_tilt());
+        slew(1);
 
         max_change = tilt_max_change(false);
 
         float new_throttle = constrain_float(SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)*0.01, 0, 1);
-        if (current_tilt < get_fully_forward_tilt()) {
+        if (current_tilt < 1) {
             current_throttle = constrain_float(new_throttle,
                                                     current_throttle-max_change,
                                                     current_throttle+max_change);
@@ -296,17 +248,17 @@ void Tiltrotor::continuous_update(void)
     }
 
     if (quadplane.assisted_flight &&
-        transition->transition_state >= Tiltrotor_Transition::TRANSITION_TIMER) {
+        quadplane.transition_state >= QuadPlane::TRANSITION_TIMER) {
         // we are transitioning to fixed wing - tilt the motors all
         // the way forward
-        slew(get_forward_flight_tilt());
+        slew(1);
     } else {
         // until we have completed the transition we limit the tilt to
         // Q_TILT_MAX. Anything above 50% throttle gets
         // Q_TILT_MAX. Below 50% throttle we decrease linearly. This
         // relies heavily on Q_VFWD_GAIN being set appropriately.
        float settilt = constrain_float((SRV_Channels::get_output_scaled(SRV_Channel::k_throttle)-MAX(plane.aparm.throttle_min.get(),0)) / 50.0f, 0, 1);
-       slew(MIN(settilt * max_angle_deg / 90.0f, get_forward_flight_tilt()));
+       slew(settilt * max_angle_deg / 90.0f);
     }
 }
 
@@ -425,7 +377,7 @@ void Tiltrotor::tilt_compensate_angle(float *thrust, uint8_t num_motors, float n
             // but moves us to no roll control as the angle increases
             thrust[i] = current_tilt * avg_tilt_thrust + thrust[i] * (1-current_tilt);
             // add in differential thrust for yaw control, scaled by tilt angle
-            const float diff_thrust = motors->get_roll_factor(i) * (motors->get_yaw()+motors->get_yaw_ff()) * sin_tilt * yaw_gain;
+            const float diff_thrust = motors->get_roll_factor(i) * motors->get_yaw() * sin_tilt * yaw_gain;
             thrust[i] += diff_thrust;
             largest_tilted = MAX(largest_tilted, thrust[i]);
         }
@@ -476,7 +428,7 @@ bool Tiltrotor::fully_fwd(void) const
     if (!enabled() || (tilt_mask == 0)) {
         return false;
     }
-    return (current_tilt >= get_fully_forward_tilt());
+    return (current_tilt >= 1);
 }
 
 /*
@@ -546,8 +498,8 @@ void Tiltrotor::vectoring(void)
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRearRight,1000 * constrain_float(base_output + right,0,1));
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear,  1000 * constrain_float(base_output + mid,0,1));
     } else {
-        const float yaw_out = motors->get_yaw()+motors->get_yaw_ff();
-        const float roll_out = motors->get_roll()+motors->get_roll_ff();
+        const float yaw_out = motors->get_yaw();
+        const float roll_out = motors->get_roll();
         float yaw_range = zero_out;
 
         // now apply vectored thrust for yaw and roll.
@@ -648,30 +600,4 @@ void Tiltrotor::update_yaw_target(void)
     }
     transition_yaw_set_ms = now;
 }
-
-bool Tiltrotor_Transition::update_yaw_target(float& yaw_target_cd)
-{
-    if (!(tiltrotor.is_vectored() &&
-        transition_state <= TRANSITION_TIMER)) {
-        return false;
-    }
-    tiltrotor.update_yaw_target();
-    yaw_target_cd = tiltrotor.transition_yaw_cd;
-    return true;
-}
-
-// return true if we should show VTOL view
-bool Tiltrotor_Transition::show_vtol_view() const
-{
-    bool show_vtol = quadplane.in_vtol_mode();
-
-    if (!show_vtol && tiltrotor.is_vectored() && transition_state <= TRANSITION_TIMER) {
-        // we use multirotor controls during fwd transition for
-        // vectored yaw vehicles
-        return true;
-    }
-
-    return show_vtol;
-}
-
 #endif  // HAL_QUADPLANE_ENABLED
