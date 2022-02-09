@@ -145,6 +145,10 @@ public:
     /// update_wpnav - run the wp controller - should be called at 100hz or higher
     virtual bool update_wpnav();
 
+    ///GUST
+    /// update_wpnav - run the wp time controller - should be called at 100hz or higher
+    virtual bool update_time_wpnav(float wp_time);
+
     // returns true if update_wpnav has been run very recently
     bool is_active() const;
 

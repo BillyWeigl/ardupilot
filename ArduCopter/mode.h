@@ -392,6 +392,7 @@ public:
     enum class SubMode : uint8_t {
         TAKEOFF,
         WP,
+        TIME_WP,
         LAND,
         RTL,
         CIRCLE_MOVE_TO_EDGE,
@@ -465,6 +466,7 @@ private:
 
     void takeoff_run();
     void wp_run();
+    void time_wp_run(float wp_time);
     void land_run();
     void rtl_run();
     void circle_run();
@@ -910,6 +912,7 @@ public:
 
     enum class SubMode {
         TakeOff,
+        TIME_WP,
         WP,
         Pos,
         PosVelAccel,

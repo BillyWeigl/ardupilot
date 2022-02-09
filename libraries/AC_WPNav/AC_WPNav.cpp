@@ -1,5 +1,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include "AC_WPNav.h"
+// #include <AP_Mission/AP_Mission.h>                              // Mission command library
+
 
 extern const AP_HAL::HAL& hal;
 
@@ -53,7 +55,7 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] = {
     AP_GROUPINFO("SPEED_DN",    3, AC_WPNav, _wp_speed_down_cms, WPNAV_WP_SPEED_DOWN),
 
     // @Param: ACCEL
-    // @DisplayName: Waypoint Acceleration 
+    // @DisplayName: Waypoint Acceleration
     // @Description: Defines the horizontal acceleration in cm/s/s used during missions
     // @Units: cm/s/s
     // @Range: 50 500
@@ -147,12 +149,12 @@ AC_WPNav::TerrainSource AC_WPNav::get_terrain_source() const
 ///     should be called once before the waypoint controller is used but does not need to be called before subsequent updates to destination
 void AC_WPNav::wp_and_spline_init(float speed_cms)
 {
-    
+
     // sanity check parameters
     // check _wp_accel_cmss is reasonable
     const float wp_accel_cmss = MIN(_wp_accel_cmss, GRAVITY_MSS * 100.0f * tanf(ToRad(_attitude_control.lean_angle_max_cd() * 0.01f)));
     _wp_accel_cmss.set_and_save_ifchanged((_wp_accel_cmss <= 0) ? WPNAV_ACCELERATION : wp_accel_cmss);
-    
+
     // check _wp_radius_cm is reasonable
     _wp_radius_cm.set_and_save_ifchanged(MAX(_wp_radius_cm, WPNAV_WP_RADIUS_MIN));
 
@@ -602,6 +604,46 @@ bool AC_WPNav::update_wpnav()
 
     return ret;
 }
+
+///GUST
+/// update_wpnav - run the wp time controller - should be called at 100hz or higher
+bool AC_WPNav::update_time_wpnav(float wp_time)
+{
+
+
+    bool ret = true;
+
+    if (!is_equal(_wp_speed_cms.get(), _last_wp_speed_cms)) {
+        set_speed_xy(_wp_speed_cms);
+        _last_wp_speed_cms = _wp_speed_cms;
+    }
+    if (!is_equal(_wp_speed_up_cms.get(), _last_wp_speed_up_cms)) {
+        set_speed_up(_wp_speed_up_cms);
+        _last_wp_speed_up_cms = _wp_speed_up_cms;
+    }
+    if (!is_equal(_wp_speed_down_cms.get(), _last_wp_speed_down_cms)) {
+        set_speed_down(_wp_speed_down_cms);
+        _last_wp_speed_down_cms = _wp_speed_down_cms;
+    }
+
+    // advance the target if necessary
+    if (!advance_wp_target_along_track(_pos_control.get_dt())) {
+        // To-Do: handle inability to advance along track (probably because of missing terrain data)
+        ret = false;
+    }
+
+    // //Get the time command
+    // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+    // gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
+
+    _pos_control.update_xy_time_controller(wp_time);
+
+    _wp_last_update = AP_HAL::millis();
+
+    return ret;
+}
+
+
 
 // returns true if update_wpnav has been run very recently
 bool AC_WPNav::is_active() const

@@ -136,6 +136,14 @@ public:
     ///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
     void update_xy_controller();
 
+    ///GUST
+    /// Time component
+    /// update_xy_time_controller - runs the horizontal position controller correcting position, velocity and acceleration errors.
+    ///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
+    ///     Desired velocity and accelerations are added to these corrections as they are calculated
+    ///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
+    void update_xy_time_controller(float wp_time);
+
     ///
     /// Vertical position controller
     ///

@@ -296,6 +296,9 @@ public:
         uint16_t p1;                // general purpose parameter 1
         Content content;
 
+        // Adding Timing Paramter 4
+        float p4;
+
         // return a human-readable interpretation of the ID stored in this command
         const char *type() const;
 
@@ -578,7 +581,7 @@ public:
     /*
       return true if MIS_OPTIONS is set to allow continue of mission
       logic after a land and the next waypoint is a takeoff. If this
-      is false then after a landing is complete the vehicle should 
+      is false then after a landing is complete the vehicle should
       disarm and mission logic should stop
      */
     bool continue_after_land_check_for_takeoff(void);

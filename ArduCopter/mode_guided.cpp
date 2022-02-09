@@ -59,7 +59,7 @@ void ModeGuided::run()
         // run takeoff controller
         takeoff_run();
         break;
-
+    case SubMode::TIME_WP:
     case SubMode::WP:
         // run waypoint controller
         wp_control_run();
@@ -316,7 +316,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
     // if configured to use wpnav for position control
     if (use_wpnav_for_position_control()) {
         // ensure we are in position control mode
-        if (guided_mode != SubMode::WP) {
+        if ((guided_mode != SubMode::WP) || (guided_mode != SubMode::TIME_WP) ) {
             wp_control_start();
         }
 
@@ -377,6 +377,7 @@ bool ModeGuided::set_destination(const Vector3f& destination, bool use_yaw, floa
 bool ModeGuided::get_wp(Location& destination) const
 {
     switch (guided_mode) {
+    case SubMode::TIME_WP:
     case SubMode::WP:
         return wp_nav->get_oa_wp_destination(destination);
     case SubMode::Pos:
@@ -407,7 +408,7 @@ bool ModeGuided::set_destination(const Location& dest_loc, bool use_yaw, float y
 
     // if using wpnav for position control
     if (use_wpnav_for_position_control()) {
-        if (guided_mode != SubMode::WP) {
+        if ((guided_mode != SubMode::WP) || (guided_mode != SubMode::TIME_WP)) {
             wp_control_start();
         }
 
@@ -1110,6 +1111,7 @@ const Vector3f& ModeGuided::get_target_accel() const
 uint32_t ModeGuided::wp_distance() const
 {
     switch(guided_mode) {
+    case SubMode::TIME_WP:
     case SubMode::WP:
         return wp_nav->get_wp_distance_to_destination();
     case SubMode::Pos:
@@ -1125,6 +1127,7 @@ uint32_t ModeGuided::wp_distance() const
 int32_t ModeGuided::wp_bearing() const
 {
     switch(guided_mode) {
+    case SubMode::TIME_WP:
     case SubMode::WP:
         return wp_nav->get_wp_bearing_to_destination();
     case SubMode::Pos:
@@ -1146,6 +1149,7 @@ int32_t ModeGuided::wp_bearing() const
 float ModeGuided::crosstrack_error() const
 {
     switch (guided_mode) {
+    case SubMode::TIME_WP:
     case SubMode::WP:
         return wp_nav->crosstrack_error();
     case SubMode::Pos:

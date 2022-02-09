@@ -128,6 +128,7 @@ void GCS_MAVLINK_Copter::send_position_target_local_ned()
         // we don't have a local target when in angle mode
         return;
     case ModeGuided::SubMode::TakeOff:
+    case ModeGuided::SubMode::TIME_WP: //GUST
     case ModeGuided::SubMode::WP:
     case ModeGuided::SubMode::Pos:
         type_mask = POSITION_TARGET_TYPEMASK_VX_IGNORE | POSITION_TARGET_TYPEMASK_VY_IGNORE | POSITION_TARGET_TYPEMASK_VZ_IGNORE |
@@ -158,7 +159,7 @@ void GCS_MAVLINK_Copter::send_position_target_local_ned()
     mavlink_msg_position_target_local_ned_send(
         chan,
         AP_HAL::millis(), // time boot ms
-        MAV_FRAME_LOCAL_NED, 
+        MAV_FRAME_LOCAL_NED,
         type_mask,
         target_pos.x,   // x in metres
         target_pos.y,   // y in metres
@@ -1330,7 +1331,7 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
         copter.g2.toy_mode.handle_message(msg);
         break;
 #endif
-        
+
     default:
         handle_common_message(msg);
         break;
@@ -1419,7 +1420,7 @@ int16_t GCS_MAVLINK_Copter::high_latency_target_altitude() const
         return 0.01 * (global_position_current.alt + copter.pos_control->get_pos_error_z_cm());
     }
     return 0;
-    
+
 }
 
 uint8_t GCS_MAVLINK_Copter::high_latency_tgt_heading() const
@@ -1430,9 +1431,9 @@ uint8_t GCS_MAVLINK_Copter::high_latency_tgt_heading() const
         // need to convert -18000->18000 to 0->360/2
         return wrap_360_cd(flightmode->wp_bearing()) / 200;
     }
-    return 0;     
+    return 0;
 }
-    
+
 uint16_t GCS_MAVLINK_Copter::high_latency_tgt_dist() const
 {
     if (copter.ap.initialised) {
@@ -1449,7 +1450,7 @@ uint8_t GCS_MAVLINK_Copter::high_latency_tgt_airspeed() const
         // return units are m/s*5
         return MIN(copter.pos_control->get_vel_target_cms().length() * 5.0e-2, UINT8_MAX);
     }
-    return 0;  
+    return 0;
 }
 
 uint8_t GCS_MAVLINK_Copter::high_latency_wind_speed() const
@@ -1461,7 +1462,7 @@ uint8_t GCS_MAVLINK_Copter::high_latency_wind_speed() const
         wind = AP::ahrs().wind_estimate();
         return wind.length() * 5;
     }
-    return 0; 
+    return 0;
 }
 
 uint8_t GCS_MAVLINK_Copter::high_latency_wind_direction() const

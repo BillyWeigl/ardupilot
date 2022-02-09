@@ -911,6 +911,12 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
 //         cmd.p1 = packet.param1;
 // #endif
       cmd.p1 = packet.param1;
+      //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", packet.param4);
+
+      //Store the time parameter 4
+      cmd.content.scripting.p2 = packet.param4;
+      //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", cmd.p4);
+
     }
     break;
 
@@ -2261,7 +2267,7 @@ const char *AP_Mission::Mission_Command::type() const
         return "WP";
     case MAV_CMD_NAV_TIME_WAYPOINT:
         // return "TimeWP";
-        return "WP";
+        return "TIME_WP";
     case MAV_CMD_NAV_SPLINE_WAYPOINT:
         return "SplineWP";
     case MAV_CMD_NAV_RETURN_TO_LAUNCH:

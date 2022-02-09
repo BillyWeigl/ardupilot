@@ -97,7 +97,7 @@ void ModeAuto::run()
         // check for mission changes
         if (check_for_mission_change()) {
             // if mission is running restart the current command if it is a waypoint or spline command
-            if ((copter.mode_auto.mission.state() == AP_Mission::MISSION_RUNNING) && (_mode == SubMode::WP)) {
+            if ((copter.mode_auto.mission.state() == AP_Mission::MISSION_RUNNING) && (_mode == SubMode::WP || _mode == SubMode::TIME_WP )) {
                 if (mission.restart_current_nav_cmd()) {
                     gcs().send_text(MAV_SEVERITY_CRITICAL, "Auto mission changed, restarted command");
                 } else {
@@ -110,18 +110,38 @@ void ModeAuto::run()
         mission.update();
     }
 
+
+
     // call the correct auto controller
     switch (_mode) {
 
     case SubMode::TAKEOFF:
         takeoff_run();
         break;
+    case SubMode::TIME_WP:{
+        //Time cmd variable
 
+        // const AP_Mission::Mission_Command time_cmd_next= mission.get_next_nav_cmd(time_cmd_curr.index);
+        // float time = mission.get_current_nav_cmd().p4;
+        // AP_Mission::Mission_Command cmd_temp;
+        // if (mission.read_cmd_from_storage(time_cmd_curr.index,cmd_temp)){
+        //   gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd_temp.p1);
+        //   gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd_temp.index);
+        // }
+
+        AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+        gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", time_cmd_curr.content.scripting.p2);
+        // wp_run();
+        time_wp_run(time_cmd_curr.p4);
+        break;
+      }
     case SubMode::WP:
-    case SubMode::CIRCLE_MOVE_TO_EDGE:
+    case SubMode::CIRCLE_MOVE_TO_EDGE:{
+        // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+        // gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", time_cmd_curr.p1);
         wp_run();
         break;
-
+      }
     case SubMode::LAND:
         land_run();
         break;
@@ -479,7 +499,7 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_TIME_WAYPOINT:             // 26  Navigate to Time Waypoint
         do_nav_time_wp(cmd);
-        gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd.p1);
+        //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd.p1);
         break;
 
     case MAV_CMD_NAV_LAND:              // 21 LAND to Waypoint
@@ -697,6 +717,7 @@ uint32_t ModeAuto::wp_distance() const
     switch (_mode) {
     case SubMode::CIRCLE:
         return copter.circle_nav->get_distance_to_target();
+    case SubMode::TIME_WP: //GUST
     case SubMode::WP:
     case SubMode::CIRCLE_MOVE_TO_EDGE:
     default:
@@ -709,6 +730,7 @@ int32_t ModeAuto::wp_bearing() const
     switch (_mode) {
     case SubMode::CIRCLE:
         return copter.circle_nav->get_bearing_to_target();
+    case SubMode::TIME_WP: //GUST
     case SubMode::WP:
     case SubMode::CIRCLE_MOVE_TO_EDGE:
     default:
@@ -721,6 +743,7 @@ bool ModeAuto::get_wp(Location& destination) const
     switch (_mode) {
     case SubMode::NAVGUIDED:
         return copter.mode_guided.get_wp(destination);
+    case SubMode::TIME_WP:
     case SubMode::WP:
         return wp_nav->get_oa_wp_destination(destination);
     case SubMode::RTL:
@@ -901,6 +924,56 @@ void ModeAuto::wp_run()
         attitude_control->input_thrust_vector_heading(wp_nav->get_thrust_vector(), auto_yaw.yaw(), auto_yaw.rate_cds());
     }
 }
+
+// time_wp_run - runs the auto waypoint controller with time as a parameter
+//      called by auto_run at 100hz or more
+void ModeAuto::time_wp_run(float wp_time)
+{
+
+    // process pilot's yaw input
+    float target_yaw_rate = 0;
+    if (!copter.failsafe.radio && use_pilot_yaw()) {
+        // get pilot's desired yaw rate
+        target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
+        if (!is_zero(target_yaw_rate)) {
+            auto_yaw.set_mode(AUTO_YAW_HOLD);
+        }
+    }
+
+    // if not armed set throttle to zero and exit immediately
+    if (is_disarmed_or_landed()) {
+        make_safe_ground_handling();
+        wp_nav->wp_and_spline_init();
+        return;
+    }
+
+    // set motors to full range
+    motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
+
+    // run waypoint controller
+    copter.failsafe_terrain_set_status(wp_nav->update_time_wpnav(wp_time));
+
+    //Get the time command
+    AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+    gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
+
+    // WP_Nav has set the vertical position control targets
+    // run the vertical position controller and set output throttle
+    pos_control->update_z_controller();
+
+    // call attitude controller
+    if (auto_yaw.mode() == AUTO_YAW_HOLD) {
+        // roll & pitch from waypoint controller, yaw rate from pilot
+        attitude_control->input_thrust_vector_rate_heading(wp_nav->get_thrust_vector(), target_yaw_rate);
+    } else {
+        // roll, pitch from waypoint controller, yaw heading from auto_heading()
+        attitude_control->input_thrust_vector_heading(wp_nav->get_thrust_vector(), auto_yaw.yaw(), auto_yaw.rate_cds());
+    }
+    // gcs().send_text(MAV_SEVERITY_ERROR,"P4: %f", time_cmd_curr.p4);
+}
+
+
+
 
 // auto_land_run - lands in auto mode
 //      called by auto_run at 100hz or more
@@ -1259,7 +1332,7 @@ void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
         copter.failsafe_terrain_on_event();
         return;
     }
-    _mode = SubMode::WP;
+    _mode = SubMode::TIME_WP;
     // this will be used to remember the time in millis after we reach or pass the WP.
     loiter_time = 0;
     // this is the delay, stored in seconds

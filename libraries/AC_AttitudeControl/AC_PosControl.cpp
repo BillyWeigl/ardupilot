@@ -665,6 +665,74 @@ void AC_PosControl::update_xy_controller()
     calculate_yaw_and_rate_yaw();
 }
 
+///GUST
+/// Time component
+/// update_xy_time_controller - runs the horizontal position controller correcting position, velocity and acceleration errors.
+///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
+///     Desired velocity and accelerations are added to these corrections as they are calculated
+///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
+void AC_PosControl::update_xy_time_controller(float wp_time)
+{
+    // check for ekf xy position reset
+    handle_ekf_xy_reset();
+
+    // Check for position control time out
+    if ( !is_active_xy() ) {
+        init_xy_controller();
+        if (has_good_timing()) {
+            // call internal error because initialisation has not been done
+            INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+        }
+    }
+    _last_update_xy_us = AP_HAL::micros64();
+
+    float ahrsGndSpdLimit, ahrsControlScaleXY;
+    AP::ahrs().getControlLimits(ahrsGndSpdLimit, ahrsControlScaleXY);
+
+    // Position Controller
+
+    const Vector3f &curr_pos = _inav.get_position();
+    Vector2f vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos, _limit.pos_xy);
+
+    // add velocity feed-forward scaled to compensate for optical flow measurement induced EKF noise
+    vel_target *= ahrsControlScaleXY;
+    _vel_target.xy() = vel_target;
+    _vel_target.xy() += _vel_desired.xy();
+
+    // Velocity Controller
+
+    // check if vehicle velocity is being overridden
+    // todo: remove this and use input shaping
+    if (_flags.vehicle_horiz_vel_override) {
+        _flags.vehicle_horiz_vel_override = false;
+    } else {
+        _vehicle_horiz_vel = _inav.get_velocity().xy();
+    }
+    Vector2f accel_target = _pid_vel_xy.update_all(Vector2f{_vel_target.x, _vel_target.y}, _vehicle_horiz_vel, Vector2f(_limit_vector.x, _limit_vector.y));
+    // acceleration to correct for velocity error and scale PID output to compensate for optical flow measurement induced EKF noise
+    accel_target *= ahrsControlScaleXY;
+
+    // pass the correction acceleration to the target acceleration output
+    _accel_target.xy() = accel_target;
+
+    // Add feed forward into the target acceleration output
+    _accel_target.xy() += _accel_desired.xy();
+
+    // Acceleration Controller
+
+    // limit acceleration using maximum lean angles
+    _limit_vector.xy().zero();
+    float angle_max = MIN(_attitude_control.get_althold_lean_angle_max_cd(), get_lean_angle_max_cd());
+    float accel_max = GRAVITY_MSS * 100.0f * tanf(ToRad(angle_max * 0.01f));
+    if (_accel_target.limit_length_xy(accel_max)) {
+        _limit_vector.xy() = _accel_target.xy();
+    }
+
+    // update angle targets that will be passed to stabilize controller
+    accel_to_lean_angles(_accel_target.x, _accel_target.y, _roll_target, _pitch_target);
+    calculate_yaw_and_rate_yaw();
+}
+
 
 ///
 /// Vertical position controller
