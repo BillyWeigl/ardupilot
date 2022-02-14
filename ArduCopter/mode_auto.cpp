@@ -118,6 +118,7 @@ void ModeAuto::run()
     case SubMode::TAKEOFF:
         takeoff_run();
         break;
+    //GUST
     case SubMode::TIME_WP:{
         //Time cmd variable
 
@@ -129,16 +130,16 @@ void ModeAuto::run()
         //   gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd_temp.index);
         // }
 
-        AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
-        gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", time_cmd_curr.content.scripting.p2);
+        // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+        // gcs().send_text(MAV_SEVERITY_ERROR,"Stored Var: %f", time_cmd_curr.content.speed.target_ms);
         // wp_run();
-        time_wp_run(time_cmd_curr.p4);
+        time_wp_run();
         break;
       }
     case SubMode::WP:
     case SubMode::CIRCLE_MOVE_TO_EDGE:{
         // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
-        // gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", time_cmd_curr.p1);
+        // gcs().send_text(MAV_SEVERITY_ERROR,"Stored Var: %f", time_cmd_curr.content.speed.target_ms);
         wp_run();
         break;
       }
@@ -499,7 +500,7 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_TIME_WAYPOINT:             // 26  Navigate to Time Waypoint
         do_nav_time_wp(cmd);
-        //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd.p1);
+        gcs().send_text(MAV_SEVERITY_ERROR,"Start command: %f", cmd.p4);
         break;
 
     case MAV_CMD_NAV_LAND:              // 21 LAND to Waypoint
@@ -925,9 +926,10 @@ void ModeAuto::wp_run()
     }
 }
 
+// GUST
 // time_wp_run - runs the auto waypoint controller with time as a parameter
 //      called by auto_run at 100hz or more
-void ModeAuto::time_wp_run(float wp_time)
+void ModeAuto::time_wp_run()
 {
 
     // process pilot's yaw input
@@ -951,11 +953,11 @@ void ModeAuto::time_wp_run(float wp_time)
     motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
     // run waypoint controller
-    copter.failsafe_terrain_set_status(wp_nav->update_time_wpnav(wp_time));
+    copter.failsafe_terrain_set_status(wp_nav->update_time_wpnav()); //GUST
 
     //Get the time command
-    AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
-    gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
+    // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+    // gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
 
     // WP_Nav has set the vertical position control targets
     // run the vertical position controller and set output throttle
@@ -1313,9 +1315,15 @@ void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
     }
 }
 
+//GUST
 //do_nav_time_wp - initiate move to next time waypoint
 void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
 {
+
+    //GUST Extracting the time variable and storing in WP_Nav protected variable
+    gcs().send_text(MAV_SEVERITY_ERROR,"cmd.p4: %f", cmd.p4);
+    // AP::logger().Write_MessageF("cmd.p4: %f", cmd.p4);
+    wp_nav->set_wp_time(cmd.p4);
 
     // calculate default location used when lat, lon or alt is zero
     Location default_loc = copter.current_loc;

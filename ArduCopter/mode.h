@@ -466,7 +466,7 @@ private:
 
     void takeoff_run();
     void wp_run();
-    void time_wp_run(float wp_time);
+    void time_wp_run(); //GUST
     void land_run();
     void rtl_run();
     void circle_run();

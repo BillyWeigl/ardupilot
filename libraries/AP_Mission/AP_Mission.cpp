@@ -914,8 +914,10 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
       //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", packet.param4);
 
       //Store the time parameter 4
-      cmd.content.scripting.p2 = packet.param4;
-      //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", cmd.p4);
+      // cmd.content.scripting.p2 = packet.param4;
+      // cmd.content.speed.target_ms = packet.param4;
+      cmd.p4 = packet.param4;
+      // gcs().send_text(MAV_SEVERITY_ERROR,"AP_Mission: %f", cmd.p4);
 
     }
     break;
@@ -1376,7 +1378,11 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
     case 0:
         // this is reserved for 16 bit command IDs
         return false;
-
+    //GUST
+    case MAV_CMD_NAV_TIME_WAYPOINT:
+        packet.param1 = cmd.p1;
+        packet.param4 = cmd.p4;
+        break;
     case MAV_CMD_NAV_WAYPOINT:                          // MAV ID: 16
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
         // acceptance radius in meters

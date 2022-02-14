@@ -607,9 +607,10 @@ bool AC_WPNav::update_wpnav()
 
 ///GUST
 /// update_wpnav - run the wp time controller - should be called at 100hz or higher
-bool AC_WPNav::update_time_wpnav(float wp_time)
+bool AC_WPNav::update_time_wpnav()
 {
 
+    gcs().send_text(MAV_SEVERITY_ERROR,"UpdateTimeWPNAV: %f", _wp_time);
 
     bool ret = true;
 
@@ -636,11 +637,16 @@ bool AC_WPNav::update_time_wpnav(float wp_time)
     // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
     // gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
 
-    _pos_control.update_xy_time_controller(wp_time);
+    _pos_control.update_xy_time_controller(1.00000);
 
     _wp_last_update = AP_HAL::millis();
 
     return ret;
+}
+
+void AC_WPNav::set_wp_time(float wp_time){
+  _wp_time = wp_time;
+  gcs().send_text(MAV_SEVERITY_ERROR,"set_wp_time: %f", _wp_time);
 }
 
 

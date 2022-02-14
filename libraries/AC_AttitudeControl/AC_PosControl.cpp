@@ -625,7 +625,7 @@ void AC_PosControl::update_xy_controller()
 
     const Vector3f &curr_pos = _inav.get_position();
     Vector2f vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos, _limit.pos_xy);
-
+    // gcs().send_text(MAV_SEVERITY_ERROR,"Velocity x compenent: %f", vel_target.x);
     // add velocity feed-forward scaled to compensate for optical flow measurement induced EKF noise
     vel_target *= ahrsControlScaleXY;
     _vel_target.xy() = vel_target;
@@ -693,6 +693,9 @@ void AC_PosControl::update_xy_time_controller(float wp_time)
 
     const Vector3f &curr_pos = _inav.get_position();
     Vector2f vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos, _limit.pos_xy);
+
+    // gcs().send_text(MAV_SEVERITY_ERROR,"Velocity x compenent: %f", vel_target.x);
+
 
     // add velocity feed-forward scaled to compensate for optical flow measurement induced EKF noise
     vel_target *= ahrsControlScaleXY;

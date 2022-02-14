@@ -147,7 +147,8 @@ public:
 
     ///GUST
     /// update_wpnav - run the wp time controller - should be called at 100hz or higher
-    virtual bool update_time_wpnav(float wp_time);
+    virtual bool update_time_wpnav();
+    void set_wp_time(float wp_time);
 
     // returns true if update_wpnav has been run very recently
     bool is_active() const;
@@ -269,4 +270,7 @@ protected:
     AP_Int8     _rangefinder_use;       // parameter that specifies if the range finder should be used for terrain following commands
     bool        _rangefinder_healthy;   // true if rangefinder distance is healthy (i.e. between min and maximum)
     float       _rangefinder_alt_cm;    // latest distance from the rangefinder
+
+    //GUST time implementation
+    float       _wp_time; // time variable storage
 };
