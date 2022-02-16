@@ -719,6 +719,11 @@ private:
     uint16_t                _prev_nav_cmd_wp_index; // index of the previous "navigation" command that contains a waypoint.  Rarely used which is why we don't store the whole command
     struct Location         _exit_position;  // the position in the mission that the mission was exited
 
+    // GUST
+    float                   _wp_time; // desired arrival time of next wp
+    void set_wp_time(float wp_time); // Set function
+    float get_wp_time(); // Get function
+
     // jump related variables
     struct jump_tracking_struct {
         uint16_t index;                 // index of do-jump commands in mission

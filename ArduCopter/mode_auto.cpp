@@ -116,7 +116,33 @@ void ModeAuto::run()
     case SubMode::TAKEOFF:
         takeoff_run();
         break;
+<<<<<<< Updated upstream
 
+=======
+    //GUST
+    case SubMode::TIME_WP:{
+        //Time cmd variable
+
+        // const AP_Mission::Mission_Command time_cmd_next= mission.get_next_nav_cmd(time_cmd_curr.index);
+        // float time = mission.get_current_nav_cmd().p4;
+        // AP_Mission::Mission_Command cmd_temp;
+        // if (mission.read_cmd_from_storage(time_cmd_curr.index,cmd_temp)){
+        //   gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd_temp.p1);
+        //   gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %i", cmd_temp.index);
+        // }
+
+        // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
+        // gcs().send_text(MAV_SEVERITY_ERROR,"Stored Var: %f", time_cmd_curr.content.speed.target_ms);
+        // wp_run();
+
+        // GUST trying to get p4 out
+        float p4Time = mission.get_wp_time();
+        gcs().send_text(MAV_SEVERITY_ERROR,"p4 in mode auto: %f", p4Time);
+
+        time_wp_run();
+        break;
+      }
+>>>>>>> Stashed changes
     case SubMode::WP:
     case SubMode::CIRCLE_MOVE_TO_EDGE:
         wp_run();
@@ -478,6 +504,14 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
         do_nav_wp(cmd);
         break;
 
+<<<<<<< Updated upstream
+=======
+    case MAV_CMD_NAV_TIME_WAYPOINT:             // 26  Navigate to Time Waypoint
+        do_nav_time_wp(cmd);
+        //gcs().send_text(MAV_SEVERITY_ERROR,"Start command: %f", cmd.p4);
+        break;
+
+>>>>>>> Stashed changes
     case MAV_CMD_NAV_LAND:              // 21 LAND to Waypoint
         do_land(cmd);
         break;
@@ -1185,6 +1219,54 @@ void ModeAuto::do_nav_wp(const AP_Mission::Mission_Command& cmd)
     }
 }
 
+<<<<<<< Updated upstream
+=======
+//GUST
+//do_nav_time_wp - initiate move to next time waypoint
+void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
+{
+
+    //GUST Extracting the time variable and storing in WP_Nav protected variable
+    // gcs().send_text(MAV_SEVERITY_ERROR,"cmd.p4: %f", cmd.p4);
+    // AP::logger().Write_MessageF("cmd.p4: %f", cmd.p4);
+    // wp_nav->set_wp_time(cmd.p4);
+
+    // calculate default location used when lat, lon or alt is zero
+    Location default_loc = copter.current_loc;
+    if (wp_nav->is_active() && wp_nav->reached_wp_destination()) {
+        if (!wp_nav->get_wp_destination_loc(default_loc)) {
+            // this should never happen
+            INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+        }
+    }
+    // get waypoint's location from command and send to wp_nav
+    const Location dest_loc = loc_from_cmd(cmd, default_loc);
+    if (!wp_nav->set_wp_destination_loc(dest_loc)) {
+        // failure to set destination can only be because of missing terrain data
+        copter.failsafe_terrain_on_event();
+        return;
+    }
+    _mode = SubMode::TIME_WP;
+    // this will be used to remember the time in millis after we reach or pass the WP.
+    loiter_time = 0;
+    // this is the delay, stored in seconds
+    loiter_time_max = cmd.p1;
+    // set next destination if necessary
+    if (!set_next_wp(cmd, dest_loc)) {
+        // failure to set next destination can only be because of missing terrain data
+        copter.failsafe_terrain_on_event();
+        return;
+    }
+    // initialise yaw
+    // To-Do: reset the yaw only when the previous navigation command is not a WP.  this would allow removing the special check for ROI
+    if (auto_yaw.mode() != AUTO_YAW_ROI) {
+        auto_yaw.set_mode_to_default(false);
+    }
+
+    return;
+}
+
+>>>>>>> Stashed changes
 // checks the next mission command and adds it as a destination if necessary
 // supports both straight line and spline waypoints
 // cmd should be the current command
