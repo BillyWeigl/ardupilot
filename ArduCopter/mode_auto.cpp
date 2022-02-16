@@ -500,7 +500,7 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
 
     case MAV_CMD_NAV_TIME_WAYPOINT:             // 26  Navigate to Time Waypoint
         do_nav_time_wp(cmd);
-        gcs().send_text(MAV_SEVERITY_ERROR,"Start command: %f", cmd.p4);
+        // gcs().send_text(MAV_SEVERITY_ERROR,"Start command: %f", cmd.p4);
         break;
 
     case MAV_CMD_NAV_LAND:              // 21 LAND to Waypoint
@@ -1321,9 +1321,9 @@ void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
 {
 
     //GUST Extracting the time variable and storing in WP_Nav protected variable
-    gcs().send_text(MAV_SEVERITY_ERROR,"cmd.p4: %f", cmd.p4);
+    gcs().send_text(MAV_SEVERITY_ERROR,"cmd.p1: %f", cmd.p1*1.0e-4f);
     // AP::logger().Write_MessageF("cmd.p4: %f", cmd.p4);
-    wp_nav->set_wp_time(cmd.p4);
+    wp_nav->set_wp_time(cmd.p1*1.0e-4f);
 
     // calculate default location used when lat, lon or alt is zero
     Location default_loc = copter.current_loc;
@@ -1344,7 +1344,8 @@ void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
     // this will be used to remember the time in millis after we reach or pass the WP.
     loiter_time = 0;
     // this is the delay, stored in seconds
-    loiter_time_max = cmd.p1;
+    // loiter_time_max = cmd.p1;
+    loiter_time_max = 0;
     // set next destination if necessary
     if (!set_next_wp(cmd, dest_loc)) {
         // failure to set next destination can only be because of missing terrain data
@@ -1367,6 +1368,7 @@ void ModeAuto::do_nav_time_wp(const AP_Mission::Mission_Command& cmd)
 // returns true on success, false on failure which should only happen due to a failure to retrieve terrain data
 bool ModeAuto::set_next_wp(const AP_Mission::Mission_Command& current_cmd, const Location &default_loc)
 {
+    //GUST
     // do not add next wp if current command has a delay meaning the vehicle will stop at the destination
     if (current_cmd.p1 > 0) {
         return true;

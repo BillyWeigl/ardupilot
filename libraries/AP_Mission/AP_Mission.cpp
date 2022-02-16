@@ -910,7 +910,7 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
 //         // delay at waypoint in seconds (this is for copters???)
 //         cmd.p1 = packet.param1;
 // #endif
-      cmd.p1 = packet.param1;
+      cmd.p1 = packet.param1 * 1.0e4f;
       //gcs().send_text(MAV_SEVERITY_ERROR,"MADE IT HERE. TIME: %f", packet.param4);
 
       //Store the time parameter 4

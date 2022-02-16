@@ -610,7 +610,7 @@ bool AC_WPNav::update_wpnav()
 bool AC_WPNav::update_time_wpnav()
 {
 
-    gcs().send_text(MAV_SEVERITY_ERROR,"UpdateTimeWPNAV: %f", _wp_time);
+    // gcs().send_text(MAV_SEVERITY_ERROR,"UpdateTimeWPNAV: %f", _wp_time);
 
     bool ret = true;
 
@@ -646,7 +646,7 @@ bool AC_WPNav::update_time_wpnav()
 
 void AC_WPNav::set_wp_time(float wp_time){
   _wp_time = wp_time;
-  gcs().send_text(MAV_SEVERITY_ERROR,"set_wp_time: %f", _wp_time);
+  // gcs().send_text(MAV_SEVERITY_ERROR,"set_wp_time: %f", _wp_time);
 }
 
 
