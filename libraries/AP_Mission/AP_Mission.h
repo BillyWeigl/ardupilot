@@ -54,6 +54,7 @@ class AP_Mission
 {
 
 public:
+
     // jump command structure
     struct PACKED Jump_Command {
         uint16_t target;        // target command id
@@ -297,7 +298,7 @@ public:
         Content content;
 
         // Adding Timing Paramter 4
-        float p4;
+        // float p4;
 
         // return a human-readable interpretation of the ID stored in this command
         const char *type() const;
@@ -704,6 +705,7 @@ private:
     uint16_t                _prev_nav_cmd_index;    // index of the previous "navigation" command.  Rarely used which is why we don't store the whole command
     uint16_t                _prev_nav_cmd_wp_index; // index of the previous "navigation" command that contains a waypoint.  Rarely used which is why we don't store the whole command
     struct Location         _exit_position;  // the position in the mission that the mission was exited
+
 
     // jump related variables
     struct jump_tracking_struct {

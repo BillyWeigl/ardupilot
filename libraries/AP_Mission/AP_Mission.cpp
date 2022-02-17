@@ -890,7 +890,7 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         // this is reserved for storing 16 bit command IDs
         return MAV_MISSION_INVALID;
 
-    case MAV_CMD_NAV_TIME_WAYPOINT: {                        // MAV ID: 16
+    case MAV_CMD_NAV_TIME_WAYPOINT: {                        // MAV ID: 26 //GUST
         /*
           the 15 byte limit means we can't fit both delay and radius
           in the cmd structure. When we expand the mission structure
@@ -916,7 +916,7 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
       //Store the time parameter 4
       // cmd.content.scripting.p2 = packet.param4;
       // cmd.content.speed.target_ms = packet.param4;
-      cmd.p4 = packet.param4;
+      // cmd.p4 = packet.param4;
       // gcs().send_text(MAV_SEVERITY_ERROR,"AP_Mission: %f", cmd.p4);
 
     }
@@ -1381,7 +1381,7 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
     //GUST
     case MAV_CMD_NAV_TIME_WAYPOINT:
         packet.param1 = cmd.p1;
-        packet.param4 = cmd.p4;
+        // packet.param4 = cmd.p4;
         break;
     case MAV_CMD_NAV_WAYPOINT:                          // MAV ID: 16
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
@@ -1761,6 +1761,7 @@ bool AP_Mission::advance_current_nav_cmd(uint16_t starting_index)
             if (start_command(_nav_cmd)) {
                 _flags.nav_cmd_loaded = true;
             }
+
             // save a loaded wp index in history array for when _repeat_dist is set via MAV_CMD_DO_SET_RESUME_REPEAT_DIST
             // and prevent history being re-written until vehicle returns to interrupted position
             if (_repeat_dist > 0 && !_flags.resuming_mission && _nav_cmd.index != AP_MISSION_CMD_INDEX_NONE && !(_nav_cmd.content.location.lat == 0 && _nav_cmd.content.location.lng == 0)) {
@@ -2005,6 +2006,7 @@ void AP_Mission::increment_jump_times_run(Mission_Command& cmd, bool send_gcs_ms
     // To-Do: log an error
     return;
 }
+
 
 // check_eeprom_version - checks version of missions stored in eeprom matches this library
 // command list will be cleared if they do not match

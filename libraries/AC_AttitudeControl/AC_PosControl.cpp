@@ -688,20 +688,28 @@ void AC_PosControl::update_xy_time_controller(float wp_time)
 
     float ahrsGndSpdLimit, ahrsControlScaleXY;
     AP::ahrs().getControlLimits(ahrsGndSpdLimit, ahrsControlScaleXY);
-
+    gcs().send_text(MAV_SEVERITY_ERROR,"Time from AP_HALS::millis() = %i",AP_HAL::millis()) ;
     // Position Controller
 
     const Vector3f &curr_pos = _inav.get_position();
     Vector2f vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos, _limit.pos_xy);
 
-    // gcs().send_text(MAV_SEVERITY_ERROR,"Velocity x compenent: %f", vel_target.x);
+    // gcs().send_text(MAV_SEVERITY_ERROR,"Vel Target initial: (x: %f ,y: %f)", vel_target.x, vel_target.y);
+    // gcs().send_text(MAV_SEVERITY_ERROR,"Vel Desired initial: (x: %f ,y: %f)", _vel_desired.x, _vel_desired.y);
+    //millis()
+    // Vector2f vel_desired_temp;
+    // vel_desired_temp.x = 1.00;
+    // vel_desired_temp.y = 1.00;
 
+    // set_vel_desired_xy_cms(vel_desired_temp);
 
     // add velocity feed-forward scaled to compensate for optical flow measurement induced EKF noise
     vel_target *= ahrsControlScaleXY;
     _vel_target.xy() = vel_target;
     _vel_target.xy() += _vel_desired.xy();
 
+
+    // gcs().send_text(MAV_SEVERITY_ERROR,"Vel Target Modify: (x: %f ,y: %f)", _vel_target.x, _vel_target.y);
     // Velocity Controller
 
     // check if vehicle velocity is being overridden

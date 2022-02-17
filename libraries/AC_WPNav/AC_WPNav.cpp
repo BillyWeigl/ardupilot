@@ -637,7 +637,7 @@ bool AC_WPNav::update_time_wpnav()
     // AP_Mission::Mission_Command time_cmd_curr = mission.get_current_nav_cmd();
     // gcs().send_text(MAV_SEVERITY_ERROR,"P1: %i", time_cmd_curr.p1);
 
-    _pos_control.update_xy_time_controller(1.00000);
+    _pos_control.update_xy_time_controller(_wp_time);
 
     _wp_last_update = AP_HAL::millis();
 
